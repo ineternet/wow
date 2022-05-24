@@ -1,6 +1,7 @@
 local Global = {}
 
 local typeIndex = {}
+local const = require(script.Parent.Const)
 
 Global.void = function() end
 
@@ -75,6 +76,9 @@ end
 
 local fenv = getfenv(1)
 for k, v in pairs(Global) do
+    fenv[k] = v
+end
+for k, v in pairs(const) do
     fenv[k] = v
 end
 return fenv
