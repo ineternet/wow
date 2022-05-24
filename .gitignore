@@ -1,0 +1,10 @@
+# Project place file
+/wow.rbxlx
+
+# Roblox Studio lock files
+/*.rbxlx.lock
+/*.rbxl.lock
+
+notes
+lemur/
+.vscode
