@@ -1,3 +1,4 @@
+local ContextActionService = game:GetService("ContextActionService")
 setfenv(1, require(script.Parent.Global))
 
 local ResourceUnit = use"TargetUnit".inherit"ResourceUnit"
@@ -97,6 +98,9 @@ ResourceUnit.new = Constructor(ResourceUnit, {
     quaternaryResourceMaximum = 0,
     quinaryResourceMaximum = 0,
 
+    currentAction = Actions.Idle,
+    actionBegin = os.time(),
+    actionEnd = os.time(),
 })
 
 return ResourceUnit

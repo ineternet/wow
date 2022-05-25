@@ -44,10 +44,12 @@ Object.new = AbstractClassConstructor
 -- Functions
 
 Object.GetType = function(self)
+    assertObj(self)
     return self.type
 end
 
 Object.is = function(self, ofType)
+    assertObj(self)
     repeat
         if self:GetType() == ofType then
             return true
@@ -55,6 +57,11 @@ Object.is = function(self, ofType)
         self = self.super
     until self.type == Object.type
     return ofType == Object.type
+end
+
+Object.assertIs = function(self, strType)
+    assertObj(self)
+    assert(self:is(strType), "expected " .. strType .. ", got " .. self.type)
 end
 
 Object.Equals = Object.ReferenceEquals

@@ -12,7 +12,14 @@ local root = habitat:loadFromFs("src/shared", {
 root.Parent = ReplicatedStorage
 --End Environment setup code
 
-local unit = habitat:require(root.TargetUnit)
-local tu = unit.new()
+local units = habitat:require(root.ResourceUnit)
+local items = habitat:require(root.Item)
 
-print(tu.location)
+local tu = units.new()
+
+local stamdagger = items.newOf(2)
+
+local _ = tu.charsheet.equipment:swap("MainHand", stamdagger)
+
+print(tu.charsheet:stamina())
+--> 5

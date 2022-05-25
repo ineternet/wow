@@ -74,6 +74,10 @@ Global.using = function(strType, funcOnX, ...)
     newobj:Finalize()
 end
 
+Global.assertObj = function(d)
+    assert(d and type(d) == "table" and d.is, "expected (Object), got " .. type(d) .. " (missing 'is')")
+end
+
 local fenv = getfenv(1)
 for k, v in pairs(Global) do
     fenv[k] = v

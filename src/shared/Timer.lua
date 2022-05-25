@@ -24,6 +24,8 @@ Timer.new = Constructor(Timer, {
 -- Functions and setters
 
 function Timer:SetRate(x)
+    assert(type(x) == "number", "rate must be a number")
+    assert(x >= 0, "rate must be nonnegative")
     self.rate = x
 end
 
