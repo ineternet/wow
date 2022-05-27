@@ -13,11 +13,17 @@ Item.new = Constructor(Item, {
 
     enchant = nil,
     sockets = {},
-
-
 })
 
-Item.newOf = function(id)
+Item.newOfName = function(itemName)
+    return Item.newOfId(Items[itemName].id)
+end
+
+Item.newOf = function(item)
+    return Item.newOfId(item.id)
+end
+
+Item.newOfId = function(id)
     local newItem = Item.new()
     newItem.itemId = id
     return newItem

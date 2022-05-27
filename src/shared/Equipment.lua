@@ -30,11 +30,15 @@ Equipment.new = Constructor(Equipment, {
 function Equipment:aggregate(stat)
     local base = 0
     for _, item in pairs(self.slots) do
-        base = base + item:flat(stat)
+        if item:def() and item:def().flat and item:def().flat[stat] then
+            base = base + item:flat(stat)
+        end
     end
     local percentage = 1
     for _, item in pairs(self.slots) do
-        percentage = percentage * item:percentage(stat)
+        if item:def() and item:def().percentage and item:def().percentage[stat] then
+            percentage = percentage * item:percentage(stat)
+        end
     end
     base = base * percentage
     return base
@@ -42,7 +46,6 @@ end
 
 function Equipment:swap(slot, newItem)
     newItem:assertIs("Item")
-
     local oldItem = self.slots[slot]
     self.slots[slot] = newItem
     return oldItem

@@ -85,4 +85,12 @@ end
 for k, v in pairs(const) do
     fenv[k] = v
 end
+fenv.math.round = function(x)
+    if x > 0 then
+        return math.floor(x + 0.5)
+    elseif x < 0 then
+        return math.ceil(x - 0.5)
+    end
+    return 0
+end
 return fenv

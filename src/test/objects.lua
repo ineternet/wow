@@ -14,12 +14,16 @@ root.Parent = ReplicatedStorage
 
 local units = habitat:require(root.ResourceUnit)
 local items = habitat:require(root.Item)
+local const = habitat:require(root.Const)
 
 local tu = units.new()
+tu.charsheet.class = const.Classes.Mage
+tu.charsheet.race = const.Races.Werebeast
+tu.charsheet.level = 17
 
-local stamdagger = items.newOf(2)
+local stamdagger = items.newOf(const.Items.StamDagger)
 
-local _ = tu.charsheet.equipment:swap("MainHand", stamdagger)
+local _ = tu.charsheet.equipment:swap(const.Slots.MainHand, stamdagger)
 
-print(tu.charsheet:stamina())
---> 5
+print(tu.charsheet:spellPower())
+--> 51
