@@ -10,8 +10,8 @@ Charsheet.new = Constructor(Charsheet, {
     level = 1,
 
     class = Classes.Warrior,
-    race = Races.Werebeast,
-    spec = Specs.Protection,
+    race = Races.Human,
+    spec = Specs.None,
 
     equipment = use"Equipment".new(),
 })
@@ -75,7 +75,7 @@ Charsheet.attackPower = function(self)
 end
 
 Charsheet.spellPower = function(self)
-    local value = math.round(self.equipment:aggregate("attackPower")) + self:intellect()
+    local value = math.round(self.equipment:aggregate("spellPower")) + self:intellect()
     if self.spec == Specs.Protection then
         value = self:abilityDamage(true) * 1.01
     end
@@ -89,12 +89,9 @@ end
 Charsheet.abilityDamage = function(self, isMainHand)
     local value
     if isMainHand then
-        for k, v in pairs(self.equipment) do
-            print(k, v)
-        end
-        value = math.round(self:totalMainHandDamage() / self.equipment[Slots.MainHand]:weaponSpeed())
+        value = math.round(self:totalMainHandDamage() / self.equipment.slots[Slots.MainHand]:flat("weaponSpeed"))
     else
-        value = math.round(self:totalOffHandDamage() / self.equipment[Slots.OffHand]:weaponSpeed())
+        value = math.round(self:totalOffHandDamage() / self.equipment.slots[Slots.OffHand]:flat("weaponSpeed"))
     end
     value = value * 6
     if self:isTank() then
@@ -108,12 +105,36 @@ Charsheet.abilityDamage = function(self, isMainHand)
     return value
 end
 
+local function diminish(x)
+    if x > 1.2 then
+        return diminish(1.2)
+    end
+    return x - x * (math.exp(0.1 * x) - 1)
+end
+Charsheet.diminishSecondaryStat = function(self, stat)
+    local rating = math.round(self.equipment:aggregate(stat))
+    local pctStat = (rating / SecondaryRatingConversion[stat][self.level]) * 0.01
+    return diminish(pctStat) * 100 
+end
+
+Charsheet.mastery = function(self)
+    local mAuraFlat = 0
+    local value = (8 + mAuraFlat + self:diminishSecondaryStat("mastery")) / 100
+    return value
+end
+
+Charsheet.versatility = function(self)
+    local vAuraFlat = 0
+    local value = (vAuraFlat + self:diminishSecondaryStat("versatility")) / 100
+    return value
+end
+
 Charsheet.totalMainHandDamage = function(self)
-    return self.equipment[Slots.MainHand].weaponDamage
+    return self.equipment.slots[Slots.MainHand]:flat("weaponDamage")
 end
 
 Charsheet.totalOffHandDamage = function(self)
-    return self.equipment[Slots.OffHand].weaponDamage
+    return self.equipment.slots[Slots.OffHand]:flat("weaponDamage")
 end
 
 return Charsheet

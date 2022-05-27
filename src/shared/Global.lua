@@ -69,7 +69,7 @@ Global.use = function(strType)
 end
 
 Global.using = function(strType, funcOnX, ...)
-    local newobj = use(strType).new(...)
+    local newobj = Global.use(strType).new(...)
     funcOnX(newobj)
     newobj:Finalize()
 end
@@ -85,12 +85,14 @@ end
 for k, v in pairs(const) do
     fenv[k] = v
 end
-fenv.math.round = function(x)
-    if x > 0 then
-        return math.floor(x + 0.5)
-    elseif x < 0 then
-        return math.ceil(x - 0.5)
+if _VERSION ~= "Luau" then
+    fenv.math.round = function(x)
+        if x > 0 then
+            return math.floor(x + 0.5)
+        elseif x < 0 then
+            return math.ceil(x - 0.5)
+        end
+        return 0
     end
-    return 0
 end
 return fenv
