@@ -7,24 +7,24 @@ local Equipment = use"Object".inherit"Equipment"
 local iconst = use"Item".newOf
 Equipment.new = Constructor(Equipment, {
     slots = {
-        Head = iconst("NullItem"),
-        Neck = iconst("NullItem"),
+        Head = iconst"NullItem",
+        Neck = iconst"NullItem",
         --Shoulders = nil,
-        Back = iconst("NullItem"),
-        Chest = iconst("NullItem"),
+        Back = iconst"NullItem",
+        Chest = iconst"NullItem",
         --Waist = nil,
-        Hands = iconst("NullItem"),
+        Hands = iconst"NullItem",
         --Wrist = nil,
-        Legs = iconst("NullItem"),
-        Feet = iconst("NullItem"),
+        Legs = iconst"NullItem",
+        Feet = iconst"NullItem",
         --Tabard = nil,
-        Shirt = iconst("NullItem"),
-        Ring1 = iconst("NullItem"),
-        Ring2 = iconst("NullItem"),
-        Trinket1 = iconst("NullItem"),
+        Shirt = iconst"NullItem",
+        Ring1 = iconst"NullItem",
+        Ring2 = iconst"NullItem",
+        Trinket1 = iconst"NullItem",
         --Trinket2 = nil,
-        MainHand = iconst("NullItem"),
-        OffHand = iconst("NullItem")
+        MainHand = iconst"NullItem",
+        OffHand = iconst"NullItem",
     }
 })
 
