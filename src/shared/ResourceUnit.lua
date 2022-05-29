@@ -1,7 +1,10 @@
-local ContextActionService = game:GetService("ContextActionService")
 setfenv(1, require(script.Parent.Global))
 
 local ResourceUnit = use"TargetUnit".inherit"ResourceUnit"
+
+ResourceUnit.SoulFragmentsRegenerateTo = 3 --How many soul fragments should be the out of combat default
+ResourceUnit.SoulFragmentsRegenTimeout = 4 --How many seconds between each soul fragment regen
+ResourceUnit.DropCombatFromOwnActionTimeout = 5 --How long before combat drops if this unit the only attacker (no one is aggroed)
 
 ResourceUnit.inferPrimary = function(fromClass, fromSpec)
     return ({
@@ -57,14 +60,26 @@ ResourceUnit.inferQuinary = function(fromClass, fromSpec)
     })[fromClass] or Resources.None
 end
 
+ResourceUnit.manaAt = function(sheet)
+    local mod = 1
+    if table.find({
+        Classes.Mage,
+        Classes.Priest,
+        Classes.Warlock,
+    }, sheet.class) then
+        mod = 5
+    end
+    return BaseMana[sheet.level]
+end
+
 ResourceUnit.inferMaximum = function(forResource, fromSheet)
     if not fromSheet then
         return 0
     end
     return ({
         [Resources.None] = 0,
-        [Resources.Mana] = math.ceil(fromSheet.level^2.63477+50),
-        [Resources.Health] = fromSheet.stamina * 10,
+        [Resources.Mana] = ResourceUnit.manaAt(fromSheet),
+        [Resources.Health] = fromSheet:stamina() * 10,
         [Resources.Fury] = 100,
         [Resources.Focus] = 100,
         [Resources.Energy] = 100,
@@ -99,8 +114,177 @@ ResourceUnit.new = Constructor(ResourceUnit, {
     quinaryResourceMaximum = 0,
 
     currentAction = Actions.Idle,
-    actionBegin = os.time(),
-    actionEnd = os.time(),
-})
+    actionBegin = utctime(),
+    actionEnd = utctime(),
+    interruptCast = nil,
+
+    lastAggressiveAction = utctime(),
+
+    soulFragmentRegenTick = utctime(),
+}, function(self)
+    table.insert(self.eventConnections, game:GetService("RunService").Heartbeat:Connect(function(dt)
+        self:tick(dt)
+    end))
+end)
+
+ResourceUnit.getPool = function(self, resourceType)
+    for _, pool in ipairs({
+        "primaryResource",
+        "secondaryResource",
+        "tertiaryResource",
+        "quaternaryResource",
+        "quinaryResource",
+    }) do
+        if self[pool] == resourceType then
+            return pool
+        end
+    end
+end
+
+ResourceUnit.getResourceAmount = function(self, resourceType)
+    local pool = self:getPool(resourceType)
+    if pool then
+        return self[("%sAmount"):format(pool)]
+    else
+        return 0
+    end
+end
+
+ResourceUnit.setResourceAmount = function(self, resourceType, amount)
+    assert(amount >= 0, "Resource amount must be non-negative.")
+    assert(Resources[resourceType], "Resource type must be a valid resource.")
+
+    if IntegerResources[resourceType] and math.floor(amount) ~= amount then
+        warn("Tried to create non-integer value for resource " .. resourceType .. ", will be rounded. Original value:", amount)
+        amount = math.floor(amount)
+    end
+
+    local pool = self:getPool(resourceType)
+    if pool then
+        self[("%sAmount"):format(pool)] = math.clamp(amount, 0, self[("%sMaximum"):format(pool)])
+    end
+end
+
+ResourceUnit.deltaResourceAmount = function(self, resourceType, amount)
+    self:setResourceAmount(resourceType, math.clamp(self:getResourceAmount(resourceType) + amount, 0, self:getResourceMaximum(resourceType)))
+end
+
+ResourceUnit.getResourceMaximum = function(self, resourceType)
+    local pool = self:getPool(resourceType)
+    if pool then
+        return self[("%sMaximum"):format(pool)]
+    else
+        return 0
+    end
+end
+
+ResourceUnit.setResources = function(self, class, spec)
+    self.primaryResource = ResourceUnit.inferPrimary(class, spec)
+    self.secondaryResource = ResourceUnit.inferSecondary(class, spec)
+    self.tertiaryResource = ResourceUnit.inferTertiary(class, spec)
+    self.quaternaryResource = ResourceUnit.inferQuaternary(class, spec)
+    self.quinaryResource = ResourceUnit.inferQuinary(class, spec)
+    self.primaryResourceMaximum = ResourceUnit.inferMaximum(self.primaryResource, self.charsheet)
+    self.secondaryResourceMaximum = ResourceUnit.inferMaximum(self.secondaryResource, self.charsheet)
+    self.tertiaryResourceMaximum = ResourceUnit.inferMaximum(self.tertiaryResource, self.charsheet)
+    self.quaternaryResourceMaximum = ResourceUnit.inferMaximum(self.quaternaryResource, self.charsheet)
+    self.quinaryResourceMaximum = ResourceUnit.inferMaximum(self.quinaryResource, self.charsheet)
+end
+
+ResourceUnit.updateClassResources = function(self)
+    self:setResources(self.charsheet.class, self.charsheet.spec)
+end
+
+--Function for implementing special cases for resources:
+--  - Mana (amount is given as base mana percentage)
+ResourceUnit.resolveRaw = function(self, resourceType, amount)
+    if resourceType == Resources.Mana then
+        amount = self.charsheet:baseMana() * amount
+    end
+    return amount
+end
+
+ResourceUnit.cast = function(self, spell)
+    if self.currentAction == Actions.Casting then
+        return false
+    end
+    self.currentAction = Actions.Casting
+    self.actionBegin = utctime()
+    self.actionEnd = utctime() + (spell.castTime or 0)
+    self.gcdEnd = utctime() + GCDTimeout[spell.gcd]
+    self.currentSpell = spell
+
+    local spellTarget = self.target
+    local spellLocation = self.location
+    local interrupted = false
+    self.interruptCast = function()
+        interrupted = true
+    end
+    task.delay(self.actionEnd - utctime(), function()
+        if not interrupted then
+            self:deltaResourceAmount(spell.resource, -self:resolveRaw(spell.resource, spell.resourceCost))
+            self.currentAction = Actions.Idle
+            for order, effect in ipairs(spell.effects) do
+                print("Effect " .. order .. ": ", effect)
+                --spellDummy(spell, castingUnit, spellTarget, spellLocation)
+                effect(spell, self, spellTarget, spellLocation)
+            end
+        end
+    end)
+    return true
+end
+
+ResourceUnit.takeDamage = function(self, damage, school)
+    assert(damage >= 0, "Damage must be positive")
+    assert(school ~= nil, "School must be specified")
+    assert(self:getPool(Resources.Health), "Cannot damage healthless unit")
+
+    local isMassiveDamage = damage > self.primaryResourceMaximum
+    local postMitigation = self.charsheet:mitigate(damage, school, isMassiveDamage)
+
+    self.primaryResourceAmount = math.max(self.primaryResourceAmount - postMitigation, 0)
+    if self.primaryResourceAmount <= 0 then
+        self:die()
+    end
+end
+
+ResourceUnit.aggroedUnits = function(self)
+    return 0
+end
+
+ResourceUnit.isInCombat = function(self)
+    return self:aggroedUnits() > 0 or (utctime() - self.lastAggressiveAction) < ResourceUnit.DropCombatFromOwnActionTimeout
+end
+
+ResourceUnit.tick = function(self, deltaTime)
+    self:regenTick(deltaTime, self:isInCombat())
+end
+
+ResourceUnit.regenTick = function(self, timeSinceLastTick, inCombat)
+    self:deltaResourceAmount(Resources.Health, self.charsheet:healthRegen() * timeSinceLastTick * self:getResourceMaximum(Resources.Health))
+    self:deltaResourceAmount(Resources.Mana, self.charsheet:manaRegen() * timeSinceLastTick * self:getResourceMaximum(Resources.Mana))
+    self:deltaResourceAmount(Resources.Energy, self.charsheet:energyRegen() * timeSinceLastTick * self:getResourceMaximum(Resources.Energy))
+    self:deltaResourceAmount(Resources.Focus, self.charsheet:focusRegen() * timeSinceLastTick * self:getResourceMaximum(Resources.Focus))
+    if not inCombat then
+        if self:getPool("SoulFragments") and self:getResourceAmount("SoulFragments") ~= ResourceUnit.SoulFragmentsRegenerateTo then
+            if (utctime() - self.soulFragmentRegenTick) > ResourceUnit.SoulFragmentsRegenTimeout then
+                self.soulFragmentRegenTick = utctime()
+                local direction = self:getResourceAmount("SoulFragments") > ResourceUnit.SoulFragmentsRegenerateTo and -1 or 1
+                self:deltaResourceAmount("SoulFragments", direction)
+            end
+        end
+    end
+end
+
+ResourceUnit.procCrit = function(self, spell)
+    local critChance = self.charsheet:crit()
+    if critChance > 0 then
+        local critRoll = math.random()
+        if critRoll < critChance then
+            return true
+        end
+    end
+    return false
+end
 
 return ResourceUnit

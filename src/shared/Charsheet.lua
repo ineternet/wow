@@ -1,4 +1,3 @@
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 setfenv(1, require(script.Parent.Global))
 
 local Charsheet = use"Object".inherit"Charsheet"
@@ -14,7 +13,17 @@ Charsheet.new = Constructor(Charsheet, {
     spec = Specs.None,
 
     equipment = use"Equipment".new(),
+
+    unit = nil
 })
+
+Charsheet.baseMana = function(self)
+    local value = BaseMana[self.level]
+    if self.class == Classes.Mage or self.class == Classes.Priest or self.class == Classes.Warlock then
+        value = value * 5
+    end
+    return value
+end
 
 Charsheet.isTank = function(self)
     if self.spec == Specs.Guardian then
@@ -24,7 +33,7 @@ Charsheet.isTank = function(self)
     return ({
         [Specs.Protection] = true,
         [Specs.Crusader] = true,
-    })[self.spec or -1] or false
+    })[self.spec or 0] or false
 end
 
 Charsheet.isStrengthSpec = function(self)
@@ -33,7 +42,7 @@ Charsheet.isStrengthSpec = function(self)
         [Specs.Fury] = true,
         [Specs.Crusader] = true,
         [Specs.Guardian] = true,
-    })[self.spec or -1] or false
+    })[self.spec or 0] or false
 end
 
 Charsheet.isAgilitySpec = function(self)
@@ -43,14 +52,14 @@ Charsheet.isAgilitySpec = function(self)
         [Specs.Assassin] = true,
         [Specs.Combat] = true,
         [Specs.Feral] = true,
-    })[self.spec or -1] or false
+    })[self.spec or 0] or false
 end
 
 for _, primStat in ipairs({"strength", "stamina", "agility", "intellect"}) do
     Charsheet[primStat] = function(self)
         local classBase = math.round(BasePrimaryStat(primStat, self.level, self.class, self.race))
         local gearBase = self.equipment:aggregate(primStat)
-        local auraMod = 1
+        local auraMod = self.unit:auraStatMod(primStat)
         return (classBase + gearBase) * auraMod
     end
 end
@@ -67,10 +76,9 @@ Charsheet.attackPower = function(self)
         value = value * (1 + self:mastery())
     end
     if self.spec == Specs.Restoration or self.spec == Specs.Divination then
-        local spAuraMod = 1
-        value = (math.round(self.equipment:aggregate("spellPower")) + self:intellect()) * spAuraMod * 1.04
+        value = self:spellPower() * 1.04
     end
-    local apAuraMod = 1
+    local apAuraMod = self.unit:auraStatMod("attackPower")
     return value * apAuraMod
 end
 
@@ -82,7 +90,7 @@ Charsheet.spellPower = function(self)
     if self.spec == Specs.Feral or self.spec == Specs.Guardian then
         value = self:abilityDamage(true) * 0.96
     end
-    local spAuraMod = 1
+    local spAuraMod = self.unit:auraStatMod("spellPower")
     return value * spAuraMod
 end
 
@@ -97,7 +105,7 @@ Charsheet.abilityDamage = function(self, isMainHand)
     if self:isTank() then
         value = value * (1 + self:mastery())
     end
-    local adAuraMod = 1
+    local adAuraMod = self.unit:auraStatMod("abilityDamage")
     value = value * adAuraMod + self:attackPower()
     if not isMainHand then
         value = value * 0.5
@@ -118,15 +126,34 @@ Charsheet.diminishSecondaryStat = function(self, stat)
 end
 
 Charsheet.mastery = function(self)
-    local mAuraFlat = 0
+    local mAuraFlat = self.unit:auraStatFlat("mastery")
     local value = (8 + mAuraFlat + self:diminishSecondaryStat("mastery")) / 100
     return value
 end
 
 Charsheet.versatility = function(self)
-    local vAuraFlat = 0
+    local vAuraFlat = self.unit:auraStatFlat("versatility")
     local value = (vAuraFlat + self:diminishSecondaryStat("versatility")) / 100
     return value
+end
+
+Charsheet.crit = function(self)
+    local cAuraFlat = self.unit:auraStatFlat("crit")
+    local value = 0.05 + (cAuraFlat + self:diminishSecondaryStat("crit")) / 100
+    return value
+end
+
+Charsheet.armor = function(self)
+    local aAuraFlat = self.unit:auraStatFlat("armor")
+    local aAuraMod = self.unit:auraStatMod("armor")
+    local base = math.round(self.equipment:aggregate("armor") + 2 * self:agility())
+    local value = (base * aAuraMod) + aAuraFlat
+    return value
+end
+
+Charsheet.physicalDR = function(self, enemySheet)
+    local armor = self:armor()
+    return (armor / (85 * enemySheet.level + armor + 400))
 end
 
 Charsheet.totalMainHandDamage = function(self)
@@ -135,6 +162,42 @@ end
 
 Charsheet.totalOffHandDamage = function(self)
     return self.equipment.slots[Slots.OffHand]:flat("weaponDamage")
+end
+
+Charsheet.mitigate = function(self, damage, school, isMassive)
+    if school == Schools.Physical then
+        damage = damage * (1 - self:physicalDR(school))
+    end
+
+    return damage
+end
+
+Charsheet.critMultiplier = function(self, isPvp)
+    local val = 2
+    if isPvp then
+        val = 1.5
+    end
+    return val
+end
+
+Charsheet.healthRegen = function(self)
+    return 0.01
+end
+
+Charsheet.manaRegen = function(self)
+    return 0.02
+end
+
+Charsheet.energyRegen = function(self)
+    return 0.3
+end
+
+Charsheet.focusRegen = function(self)
+    return 0.2
+end
+
+Charsheet.combatRegenDelay = function(self)
+    return 5
 end
 
 return Charsheet

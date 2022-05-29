@@ -3,6 +3,12 @@ local const, DefaultItemValues
 local function item(idef)
     for k, v in pairs(DefaultItemValues) do
         idef[k] = idef[k] or v
+
+        --Set the metatable to the default MT
+        --The default MT covers cases where stats are not defined
+        if type(idef[k]) == "table" then
+            setmetatable(idef[k], getmetatable(idef[k]))
+        end
     end
     setmetatable(idef, {
         __index = function(t, k)
@@ -12,11 +18,40 @@ local function item(idef)
                         return i
                     end
                 end
-                --return table.find(const.Items, t)
             end
         end,
         __tostring = function(t)
             return ("(ItemDefintion:%s)"):format(t.name or "unnamed")
+        end,
+        __concat = function(a, b)
+            return tostring(a) .. tostring(b)
+        end
+    })
+    return idef
+end
+
+local function enchant(idef)
+    for k, v in pairs(DefaultEnchantValues) do
+        idef[k] = idef[k] or v
+
+        --Set the metatable to the default MT
+        --The default MT covers cases where stats are not defined
+        if type(idef[k]) == "table" then
+            setmetatable(idef[k], getmetatable(idef[k]))
+        end
+    end
+    setmetatable(idef, {
+        __index = function(t, k)
+            if k == "id" then
+                for i, v in pairs(const.Enchants) do
+                    if v == t then
+                        return i
+                    end
+                end
+            end
+        end,
+        __tostring = function(t)
+            return ("(EnchantDefintion:%s)"):format(t.name or "unnamed")
         end,
         __concat = function(a, b)
             return tostring(a) .. tostring(b)
@@ -61,7 +96,21 @@ DefaultItemValues = {
         end
     }),
 
-    percentage = setmetatable({}, {
+    mod = setmetatable({}, {
+        __index = function(t, k)
+            return 1
+        end
+    })
+}
+
+DefaultEnchantValues = {
+    flat = setmetatable({}, {
+        __index = function(t, k)
+            return 0
+        end
+    }),
+
+    mod = setmetatable({}, {
         __index = function(t, k)
             return 1
         end
@@ -69,7 +118,7 @@ DefaultItemValues = {
 }
 
 const = {
-    Resources = {
+    Resources = bidirectional {
         None = 0,
         Mana = 1,
         Health = 2,
@@ -82,6 +131,12 @@ const = {
         FelEnergy = 9,      --Affliction warlock
         SoulFragments = 10, --Demonology warlock
         ComboPoints = 11,   --Rogues, cats
+    },
+    IntegerResources = {
+        Icicles = true, --Zero to five
+        Favors = true, --Zero to five
+        SoulFragments = true, --Zero to six
+        ComboPoints = true, --Zero to five
     },
     Classes = bidirectional {
         Classless = 0,
@@ -122,7 +177,7 @@ const = {
         Halfelf = 4,
         Werebeast = 5
     },
-    UnitDescriptors = {
+    UnitDescriptors = bidirectional {
         Inanimate = 0,
         Humanoid = 1,
         Beast = 2,
@@ -134,7 +189,7 @@ const = {
         Undead = 8,
         Draconic = 9,
     },
-    Actions = {
+    Actions = bidirectional {
         Idle = 0,
         Swing = 1,
         Cast = 2,
@@ -195,9 +250,9 @@ const = {
             return k
         end
     }),
-    Enchantments = {
-        MinorStamina = {
-            charsheetPercentageBonus = {
+    Enchants = {
+        MinorStamina = enchant {
+            mod = {
                 stamina = 0.01
             }
         }
@@ -240,6 +295,53 @@ const = {
         parry = {
             [0] = 0, 3.013875853, 3.013875853, 3.013875853, 3.013875853, 3.013875853, 3.013875853, 3.013875853, 3.013875853, 3.013875853, 3.013875853, 3.013875853, 3.164569645, 3.315263438, 3.46595723, 3.616651023, 3.767344816, 3.918038608, 4.068732401, 4.219426194, 4.370119986, 4.520813779, 4.671507572, 4.822201364, 4.972895157, 5.123588949, 5.278731223, 5.440049249, 5.607820368, 5.782335738, 5.96390108, 6.152837466, 6.349482151, 6.554189456, 6.767331697, 6.989300177, 7.220506227, 7.461382314, 7.712383215, 7.973987254, 8.246697618, 8.554045819, 8.872848655, 9.203533033, 9.546541768, 9.90233418, 10.27138671, 10.65419354, 11.0512673, 11.4631397, 11.89036227, 13.12756609, 14.49350218, 16.00156526, 17.66654377, 19.50476493, 21.5342548, 23.77491507, 26.24871824, 28.97992304, 39.0000001
         },
+    },
+    BaseMana = {
+        [0] = 0, 52, 54, 57, 60, 62, 66, 69, 72, 76, 80, 86, 93, 101, 110, 119, 129, 140, 152, 165, 178, 193, 210, 227, 246, 267, 289, 314, 340, 369, 400, 433, 469, 509, 551, 598, 648, 702, 761, 825, 894, 969, 1050, 1138, 1234, 1337, 1449, 1571, 1702, 1845, 2000, 2349, 2759, 3241, 3807, 4472, 5253, 6170, 7247, 8513, 10000
+    },
+    CastType = {
+        Instant = 0,
+        Casting = 1,
+        Channeled = 2,
+    },
+    TargetType = {
+        Self = 0,
+        Enemy = 1,
+        Friendly = 2,
+        Any = 3,
+        Party = 4,
+        Area = 5,
+    },
+    Schools = {
+        Physical = 0,
+        Holy = 1,
+        Fire = 2,
+        Nature = 3,
+        Frost = 4,
+        Shadow = 5,
+        Arcane = 6,
+
+        Radiant = 7, --Fire + Holy
+        Astral = 8, --Arcane + Nature
+        Divine = 9, --Arcane + Holy
+        Frostfire = 10, --Fire + Frost
+        Shadowflame = 11, --Shadow + Fire
+        Consumption = 12, --Shadow + Physical
+        Plague = 13, --Nature + Shadow
+    },
+    GCD = {
+        None = 0,
+        Standard = 1,
+        Reduced = 2,
+    },
+    Projectiles = {
+        Fireball = 0,
+    },
+    Range = {
+        Self = 0,
+        Combat = 5,
+        Short = 30,
+        Long = 40,
     }
 }
 
@@ -291,5 +393,63 @@ const.BaseStatsClass = { --Str,Sta,Agi,Int
         [1] = { 8, 18, 19, 18, }, [2] = { 9, 21, 21, 20, }, [3] = { 10, 24, 23, 22, }, [4] = { 11, 27, 25, 24, }, [5] = { 13, 30, 27, 26, }, [6] = { 14, 33, 29, 28, }, [7] = { 15, 35, 31, 30, }, [8] = { 16, 38, 33, 32, }, [9] = { 18, 41, 35, 34, }, [10] = { 19, 44, 37, 36, }, [11] = { 20, 47, 39, 38, }, [12] = { 21, 50, 41, 40, }, [13] = { 23, 53, 43, 42, }, [14] = { 24, 56, 45, 44, }, [15] = { 25, 59, 47, 46, }, [16] = { 26, 62,49, 48, }, [17] = { 28, 64, 51, 50, }, [18] = { 29, 67, 53, 52, }, [19] = { 30, 70, 55, 54, }, [20] = { 31, 73, 57, 56, }, [21] = { 33, 76, 59, 58, }, [22] = { 34, 79, 61, 60, }, [23] = { 35, 82, 63, 62, }, [24] = { 36, 85, 65, 64, }, [25] = { 38, 88, 67, 66, }, [26] = { 39, 91, 69, 68, }, [27] = { 40, 93, 71, 70, }, [28] = { 41, 96, 73, 72, }, [29] = { 43, 99, 75, 74, }, [30] = { 44, 102, 77, 76, }, [31] = { 45, 105, 79, 78, }, [32] = { 46, 108, 81, 80, }, [33] = { 48, 111, 83, 82, }, [34] = { 49, 114, 85, 84, }, [35] = { 50, 117, 87, 86, }, [36] = { 51, 120, 89, 88, }, [37] = { 53, 122, 91, 90, }, [38] = { 54, 125, 93, 92, }, [39] = { 55, 128, 95, 94, }, [40] = { 56, 131, 97, 96, }, [41] = { 58, 134, 99, 98, }, [42] = { 59, 137, 101, 100, }, [43] = { 60, 140, 103, 102, }, [44] = { 61, 143, 105, 104, }, [45] = { 62, 146, 107, 106, }, [46] = { 64, 149, 109, 108, }, [47] = { 65, 151, 111, 110, }, [48] = { 66, 154, 113, 112, }, [49] = { 67, 157, 115, 114, }, [50] = { 69, 160, 148, 155, }, [51] = { 77, 180, 171, 176, }, [52] = { 86, 200, 194, 197, }, [53] = { 94, 219, 217, 218, }, [54] = { 103, 239, 240, 239, }, [55] = { 111, 259, 267, 261, }, [56] = { 127, 297, 296, 298, }, [57] = { 144, 335, 325, 335, }, [58] = { 160, 374, 354, 372,  }, [59] = { 177, 412, 383, 409, }, [60] = { 193, 450, 414, 450, },
     }
 }
+
+const.GCDTimeout = {
+    [const.GCD.None] = 0,
+    [const.GCD.Standard] = 1.5,
+    [const.GCD.Reduced] = 1,
+}
+
+local confirmedNonExistingSpells = {}
+const.Spells = setmetatable({
+
+}, {
+    __index = function(t, k)
+        local rg = rawget(t, k)
+        if not rg then
+            if not confirmedNonExistingSpells[k] then
+                require(script.Parent.Spell)
+                rg = rawget(t, k)
+                if not rg then
+                    confirmedNonExistingSpells[k] = true
+                    warn("Error: Spell with index " .. k .. " does not exist. Returning empty spell in the future.")
+                    return {}
+                end
+            else
+                rg = {}
+            end
+        end
+        return rg
+    end
+})
+
+local confirmedNonExistingAuras = {}
+const.Auras = setmetatable({
+
+}, {
+    __index = function(t, k)
+        local rg = rawget(t, k)
+        if not rg then
+            if not confirmedNonExistingAuras[k] then
+                require(script.Parent.Aura)
+                rg = rawget(t, k)
+                if not rg then
+                    confirmedNonExistingAuras[k] = true
+                    warn("Error: Aura with index " .. k .. " does not exist. Returning empty aura in the future.")
+                    return {}
+                end
+            else
+                rg = {}
+            end
+        end
+        return rg
+    end
+})
+
+if _VERSION == "Luau" then
+    const.utctime = tick
+else
+    const.utctime = os.time
+end
 
 return const

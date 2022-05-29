@@ -16,7 +16,7 @@ end
 
 Global.ValueEquals = function(a, b)
     for ak, av in pairs(a) do
-        if ak ~= "ref" and Global.IsPrimitive(av) then
+        if ak ~= "ref" and ak ~= "eventConnections" and Global.IsPrimitive(av) then
             if b[ak] ~= av then
                 return false
             end
@@ -32,6 +32,7 @@ end
 Global.__MakeObject = function(ofType)
     local newobj = {}
     newobj.ref = tostring(newobj):sub(8)
+    newobj.eventConnections = {}
     setmetatable(newobj, {
         __index = ofType,
         __tostring = function(t)
@@ -41,9 +42,9 @@ Global.__MakeObject = function(ofType)
     return newobj
 end
 
-Global.Constructor = function(ofType, withValues)
+Global.Constructor = function(ofType, withValues, postConstructor)
     return setmetatable({}, {
-        __call = function(t, sub)
+        __call = function(t, sub, ...)
             local mo = sub or Global.__MakeObject(ofType)
             local baseConstructor = ofType.super.new
             if baseConstructor and baseConstructor ~= Global.AbstractClassConstructor then
@@ -53,6 +54,9 @@ Global.Constructor = function(ofType, withValues)
                 for k, v in pairs(withValues) do
                     mo[k] = mo[k] or v
                 end
+            end
+            if type(postConstructor) == "function" then
+                postConstructor(mo, ...)
             end
             return mo
         end
@@ -93,6 +97,14 @@ if _VERSION ~= "Luau" then
             return math.ceil(x - 0.5)
         end
         return 0
+    end
+    fenv.math.clamp = function(x, min, max)
+        if x < min then
+            return min
+        elseif x > max then
+            return max
+        end
+        return x
     end
 end
 return fenv

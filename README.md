@@ -1,5 +1,6 @@
 ## framework
 
-bin bin bin
+Should be able to run in RLua, and Lua 5.1:
 
-c# code style
+ - For RLua, works out of the box with Rojo.
+ - Lua 5.1 requires luafilesystem. Can only run tests. Run with `lua src/test/?.lua`

@@ -68,4 +68,11 @@ Object.Equals = Object.ReferenceEquals
 
 Object.Finalize = void
 
+Object.assign = function(self, tbl)
+    for k, v in pairs(tbl) do
+        self[k] = v
+    end
+    return self
+end
+
 return Object

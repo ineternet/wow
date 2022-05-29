@@ -34,11 +34,19 @@ function Item:def()
 end
 
 function Item:flat(stat)
-    return self:def().flat[stat]
+    local value = self:def().flat[stat]
+    if self.enchant and self.enchant.flat and self.enchant.flat[stat] then
+        value = value + self.enchant.flat[stat]
+    end
+    return value
 end
 
-function Item:percentage(stat)
-    return self:def().percentage[stat]
+function Item:mod(stat)
+    local value = self:def().mod[stat]
+    if self.enchant and self.enchant.mod and self.enchant.mod[stat] then
+        value = value + self.enchant.mod[stat]
+    end
+    return value
 end
 
 return Item
