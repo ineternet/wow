@@ -86,7 +86,7 @@ Auras.PyroblastDot:assign({
     end,
     icon = "rbxassetid://1337",
     onTick = function(aura, deltaTime, owner, tickStrength)
-        owner:takeDamage((aura.damage(aura.causer.charsheet) / aura.duration) * tickStrength, Schools.Fire)
+        use"Spell".SchoolDamage(aura.causer, owner, (aura.damage(aura.causer.charsheet) / aura.duration) * tickStrength, Schools.Fire, 1)
     end,
     effectType = AuraEffectType.Magic,
     affectedByCauserHaste = true,

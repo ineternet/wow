@@ -6,20 +6,23 @@ local function spellDummy(spell, castingUnit, spellTarget, spellLocation)
     return function() end
 end
 
+Spell.SchoolDamage = function(castingUnit, spellTarget, damage, school, pvpModifier, forceCrit)
+    local crit = forceCrit or castingUnit:procCrit(spell)
+    local isPvp = spellTarget and spellTarget:is"PlayerUnit"
+    if isPvp then
+        damage = damage * (pvpModifier or 1)
+    end
+    if crit then
+        local critm = castingUnit.charsheet:critMultiplier(isPvp)
+        damage = damage * (critm)
+    end
+    spellTarget:takeDamage(damage, school)
+end
 local function schoolDamage(args)
     return function(spell, castingUnit, spellTarget, _)
         local damage = args.damage(castingUnit.charsheet)
         local school = args.school
-        local crit = args.forceCrit or castingUnit:procCrit(spell)
-        local isPvp = spellTarget and spellTarget:is"PlayerUnit"
-        if isPvp then
-            damage = damage * (args.pvp or 1)
-        end
-        if crit then
-            local critm = castingUnit.charsheet:critMultiplier(isPvp)
-            damage = damage * (critm)
-        end
-        spellTarget:takeDamage(damage, school)
+        Spell.SchoolDamage(castingUnit, spellTarget, damage, school, args.pvp, args.forceCrit)
     end
 end
 

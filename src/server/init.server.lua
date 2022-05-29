@@ -59,7 +59,7 @@ local charframe = sg.Hud.PlayerFrame
 local enemyframe = sg.Hud.UnitFrame
 
 local function pround(a1, a2)
-    return math.round(a1), math.round(a2)
+    return math.round(a1) .. " / " .. math.round(a2)
 end
 
 local RunService = game:GetService("RunService")
