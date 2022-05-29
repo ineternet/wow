@@ -195,6 +195,12 @@ ResourceUnit.updateClassResources = function(self)
     self:setResources(self.charsheet.class, self.charsheet.spec)
 end
 
+ResourceUnit.onAuraChange = ResourceUnit.updateClassResources
+ResourceUnit.onEquipmentChange = ResourceUnit.updateClassResources
+ResourceUnit.onClassChange = ResourceUnit.updateClassResources
+ResourceUnit.onSpecChange = ResourceUnit.updateClassResources
+ResourceUnit.onTalentChange = ResourceUnit.updateClassResources
+
 --Function for implementing special cases for resources:
 --  - Mana (amount is given as base mana percentage)
 ResourceUnit.resolveRaw = function(self, resourceType, amount)
@@ -220,7 +226,9 @@ ResourceUnit.cast = function(self, spell)
     self.interruptCast = function()
         interrupted = true
     end
-    task.delay(self.actionEnd - utctime(), function()
+    local castDuration = self.actionEnd - utctime()
+    castDuration = castDuration / (1 + self.charsheet:haste())
+    task.delay(castDuration, function()
         if not interrupted then
             self:deltaResourceAmount(spell.resource, -self:resolveRaw(spell.resource, spell.resourceCost))
             self.currentAction = Actions.Idle
@@ -258,6 +266,7 @@ end
 
 ResourceUnit.tick = function(self, deltaTime)
     self:regenTick(deltaTime, self:isInCombat())
+    self.super.tick(self, deltaTime)
 end
 
 ResourceUnit.regenTick = function(self, timeSinceLastTick, inCombat)

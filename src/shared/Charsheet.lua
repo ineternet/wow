@@ -12,7 +12,7 @@ Charsheet.new = Constructor(Charsheet, {
     race = Races.Human,
     spec = Specs.None,
 
-    equipment = use"Equipment".new(),
+    equipment = use"Equipment".new,
 
     unit = nil
 })
@@ -140,6 +140,12 @@ end
 Charsheet.crit = function(self)
     local cAuraFlat = self.unit:auraStatFlat("crit")
     local value = 0.05 + (cAuraFlat + self:diminishSecondaryStat("crit")) / 100
+    return value
+end
+
+Charsheet.haste = function(self)
+    local hAuraMod = self.unit:auraStatMod("haste")
+    local value = (1 + self:diminishSecondaryStat("haste") / 100) * hAuraMod - 1
     return value
 end
 

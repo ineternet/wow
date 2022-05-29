@@ -10,10 +10,27 @@ TargetUnit.new = Constructor(TargetUnit, {
 
     auras = {},
 
-    charsheet = use"Charsheet".new(),
+    charsheet = use"Charsheet".new,
 }, function(self)
     self.charsheet.unit = self
 end)
+
+TargetUnit.tick = function(self, deltaTime)
+    local toRemove = {}
+    for i, aura in ipairs(self.auras) do
+        if aura.invalidate then
+            for _, event in ipairs(aura.eventConnections) do
+                event:Disconnect()
+            end
+            table.insert(toRemove, i)
+        else
+            aura:tick(deltaTime, self)
+        end
+    end
+    for _, i in ipairs(toRemove) do
+        table.remove(self.auras, i)
+    end
+end
 
 TargetUnit.auraStatFlat = function(self, stat)
     local value = 0

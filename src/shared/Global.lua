@@ -43,8 +43,9 @@ Global.__MakeObject = function(ofType)
 end
 
 Global.Constructor = function(ofType, withValues, postConstructor)
-    return setmetatable({}, {
-        __call = function(t, sub, ...)
+    --return setmetatable({}, {
+    --    __call = function(t, sub, ...)
+        return function(sub, ...)
             local mo = sub or Global.__MakeObject(ofType)
             local baseConstructor = ofType.super.new
             if baseConstructor and baseConstructor ~= Global.AbstractClassConstructor then
@@ -52,7 +53,13 @@ Global.Constructor = function(ofType, withValues, postConstructor)
             end
             if type(withValues) == "table" then
                 for k, v in pairs(withValues) do
-                    mo[k] = mo[k] or v
+                    if type(v) == "table" then --We assume this is an empty table
+                        mo[k] = {}
+                    elseif type(v) == "function" then --We assume the constructor wants to call this function
+                        mo[k] = v()
+                    else
+                        mo[k] = mo[k] or v
+                    end
                 end
             end
             if type(postConstructor) == "function" then
@@ -60,7 +67,7 @@ Global.Constructor = function(ofType, withValues, postConstructor)
             end
             return mo
         end
-    })
+    --})
 end
 
 Global.use = function(strType)

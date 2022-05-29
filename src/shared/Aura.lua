@@ -1,20 +1,67 @@
 setfenv(1, require(script.Parent.Global))
 
 local Aura = use"Object".inherit"Aura"
+local AuraInstance = use"Object".inherit"AuraInstance"
 
 local function auraDummy(spell, castingUnit, spellTarget, spellLocation)
 
 end
 
-Aura.createInstance = function(self)
-    return {
-        aura = self,
-        appliedAt = utctime(),
-    }
+AuraInstance.tick = function(self, deltaTime, owner)
+    if self.invalidate then
+        return
+    end
+
+    if not self.elapsedPart then
+        self.elapsedPart = 0
+    end
+
+    local hasted = 1
+    if self.aura.affectedByCauserHaste
+    and self.causer
+    and self.causer.charsheet
+    and self.causer.charsheet.haste then
+        hasted = 1 + self.causer.charsheet:haste()
+    end
+
+    
+    local lastTick = false
+    if self.elapsedPart >= 1 then
+        self.invalidate = true
+        lastTick = true
+    end
+
+    if self.aura.onTick then
+        local ticks = self.duration --One tick per second
+        if not self.remainingTicks then
+            self.remainingTicks = ticks
+        end
+        local nextLogicalTick = (1 + (ticks - self.remainingTicks)) / ticks
+        local partialTick = 1
+        if nextLogicalTick > 1 and self.remainingTicks == 1 then
+            partialTick = (1 - nextLogicalTick) * ticks
+        end
+        if self.elapsedPart >= nextLogicalTick then
+            self.remainingTicks = self.remainingTicks - 1
+            --print("Ticking aura now. Remaining ticks: " .. self.remainingTicks .. ", Partial tick: " .. partialTick, ", Elapsed since start: " .. (utctime() - self.appliedAt))
+            self.aura.onTick(self, deltaTime, owner, partialTick)
+        end
+    end
+
+    --print("Added to part:", (deltaTime / self.duration) * hasted, "Haste modifier:", hasted)
+    self.elapsedPart = self.elapsedPart + (deltaTime / self.duration) * hasted
 end
 
-Aura.new = Constructor(Aura, {
+Aura.createInstance = function(self)
+    local aura = AuraInstance.new()
+    aura.aura = self
+    aura.appliedAt = utctime()
+    return aura
+end
 
+AuraInstance.new = Constructor(AuraInstance, {})
+Aura.new = Constructor(Aura, {
+    effectType = AuraEffectType.None, --Default effect type is none.
 })
 
 Auras.MortalWounds = Aura.new()
@@ -38,10 +85,12 @@ Auras.PyroblastDot:assign({
         return str
     end,
     icon = "rbxassetid://1337",
-    onTick = function(aura, owner)
-        owner:takeDamage(aura.damage, Schools.Fire)
+    onTick = function(aura, deltaTime, owner, tickStrength)
+        owner:takeDamage((aura.damage(aura.causer.charsheet) / aura.duration) * tickStrength, Schools.Fire)
     end,
-    baseTickRate = 1.5,
+    effectType = AuraEffectType.Magic,
+    affectedByCauserHaste = true,
+    --baseTicks = 8,
 })
 
 Auras.FlamestrikeSlow = Aura.new()

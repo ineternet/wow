@@ -207,6 +207,7 @@ const = {
                 stamina = 5,
                 weaponSpeed = 1.4,
                 weaponDamage = 4,
+                haste = 300,
             }
         }
     }, {
@@ -342,6 +343,16 @@ const = {
         Combat = 5,
         Short = 30,
         Long = 40,
+    },
+    NoResourceRegeneration = function()
+        return 0
+    end,
+    AuraEffectType = bidirectional {
+        None = 0,
+        Magic = 1,
+        Poison = 2,
+        Disease = 3,
+        Curse = 4,
     }
 }
 

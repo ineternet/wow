@@ -37,7 +37,13 @@ end
 
 local function applyAura(args)
     return function(spell, castingUnit, spellTarget, _)
-        
+        local auraInstance = args.aura:createInstance()
+        for k, v in pairs(args.auraData or {}) do
+            auraInstance[k] = v
+        end
+        auraInstance.causer = castingUnit
+        print("Applying aura to", spellTarget, "for", args.auraData.duration)
+        table.insert(spellTarget.auras, auraInstance)
     end
 end
 
@@ -169,6 +175,12 @@ Spells.Pyroblast:assign({
         },
         applyAura {
             aura = Auras.PyroblastDot,
+            auraData = {
+                duration = 6,
+                damage = function(sheet)
+                    return 0.5 * sheet:spellPower()
+                end,
+            },
         },
     },
 
@@ -210,6 +222,9 @@ Spells.Flamestrike:assign({
                 },
                 applyAura {
                     aura = Auras.FlamestrikeSlow,
+                    auraData = {
+                        duration = 3,
+                    },
                 },
             },
         }
