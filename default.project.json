@@ -7,6 +7,12 @@
       "$className": "ReplicatedStorage",
       "Common": {
         "$path": "src/shared"
+      },
+      "Replicate": {
+        "$className": "RemoteEvent"
+      },
+      "Retrieve": {
+        "$className": "RemoteFunction"
       }
     },
 

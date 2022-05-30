@@ -108,6 +108,30 @@ Auras.FlamestrikeSlow:assign({
     }
 })
 
+Auras.HeatingUp = Aura.new()
+Auras.HeatingUp:assign({
+    name = "Heating Up",
+    tooltip = function(sheet)
+        local str = "This unit has scored a spell critical and will gain Hot Streak if another follows."
+        return str
+    end,
+    icon = "rbxassetid://1337"
+})
+
+Auras.HotStreak = Aura.new()
+Auras.HotStreak:assign({
+    name = "Hot Streak!",
+    tooltip = function(sheet)
+        local str = "Scored two spell criticals in a row and has empowered their next Pyroblast or Flamestrike."
+        return str
+    end,
+    icon = "rbxassetid://1337",
+    modCastType = {
+        Pyroblast = CastType.Instant,
+        Flamestrike = CastType.Instant,
+    }
+})
+
 Auras.BearForm = Aura.new()
 Auras.BearForm:assign({
     name = "Bear Form",

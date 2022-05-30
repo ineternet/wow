@@ -14,8 +14,10 @@ Charsheet.new = Constructor(Charsheet, {
 
     equipment = use"Equipment".new,
 
-    unit = nil
-})
+    --unit = nil
+}, function(self)
+    --self.equipment = ref(use"Equipment".new())
+end)
 
 Charsheet.baseMana = function(self)
     local value = BaseMana[self.level]
@@ -25,9 +27,9 @@ Charsheet.baseMana = function(self)
     return value
 end
 
-Charsheet.isTank = function(self)
+Charsheet.isTank = function(self, unit)
     if self.spec == Specs.Guardian then
-        local isBear = self.unit:hasAura(Auras.BearForm)
+        local isBear = unit:hasAura(Auras.BearForm)
         return isBear
     end
     return ({
@@ -56,45 +58,45 @@ Charsheet.isAgilitySpec = function(self)
 end
 
 for _, primStat in ipairs({"strength", "stamina", "agility", "intellect"}) do
-    Charsheet[primStat] = function(self)
+    Charsheet[primStat] = function(self, unit)
         local classBase = math.round(BasePrimaryStat(primStat, self.level, self.class, self.race))
         local gearBase = self.equipment:aggregate(primStat)
-        local auraMod = self.unit:auraStatMod(primStat)
+        local auraMod = unit:auraStatMod(primStat)
         return (classBase + gearBase) * auraMod
     end
 end
 
-Charsheet.attackPower = function(self)
+Charsheet.attackPower = function(self, unit)
     local value = math.round(self.equipment:aggregate("attackPower"))
     if self:isStrengthSpec() then
-        value = value + self:strength()
+        value = value + self:strength(unit)
     end
     if self:isAgilitySpec() then
-        value = value + self:agility()
+        value = value + self:agility(unit)
     end
-    if self:isTank() then
-        value = value * (1 + self:mastery())
+    if self:isTank(unit) then
+        value = value * (1 + self:mastery(unit))
     end
     if self.spec == Specs.Restoration or self.spec == Specs.Divination then
-        value = self:spellPower() * 1.04
+        value = self:spellPower(unit) * 1.04
     end
-    local apAuraMod = self.unit:auraStatMod("attackPower")
+    local apAuraMod = unit:auraStatMod("attackPower")
     return value * apAuraMod
 end
 
-Charsheet.spellPower = function(self)
-    local value = math.round(self.equipment:aggregate("spellPower")) + self:intellect()
+Charsheet.spellPower = function(self, unit)
+    local value = math.round(self.equipment:aggregate("spellPower")) + self:intellect(unit)
     if self.spec == Specs.Protection then
         value = self:abilityDamage(true) * 1.01
     end
     if self.spec == Specs.Feral or self.spec == Specs.Guardian then
         value = self:abilityDamage(true) * 0.96
     end
-    local spAuraMod = self.unit:auraStatMod("spellPower")
+    local spAuraMod = unit:auraStatMod("spellPower")
     return value * spAuraMod
 end
 
-Charsheet.abilityDamage = function(self, isMainHand)
+Charsheet.abilityDamage = function(self, unit, isMainHand)
     local value
     if isMainHand then
         value = math.round(self:totalMainHandDamage() / self.equipment.slots[Slots.MainHand]:flat("weaponSpeed"))
@@ -103,10 +105,10 @@ Charsheet.abilityDamage = function(self, isMainHand)
     end
     value = value * 6
     if self:isTank() then
-        value = value * (1 + self:mastery())
+        value = value * (1 + self:mastery(unit))
     end
-    local adAuraMod = self.unit:auraStatMod("abilityDamage")
-    value = value * adAuraMod + self:attackPower()
+    local adAuraMod = unit:auraStatMod("abilityDamage")
+    value = value * adAuraMod + self:attackPower(unit)
     if not isMainHand then
         value = value * 0.5
     end
@@ -125,40 +127,40 @@ Charsheet.diminishSecondaryStat = function(self, stat)
     return diminish(pctStat) * 100 
 end
 
-Charsheet.mastery = function(self)
-    local mAuraFlat = self.unit:auraStatFlat("mastery")
+Charsheet.mastery = function(self, unit)
+    local mAuraFlat = unit:auraStatFlat("mastery")
     local value = (8 + mAuraFlat + self:diminishSecondaryStat("mastery")) / 100
     return value
 end
 
-Charsheet.versatility = function(self)
-    local vAuraFlat = self.unit:auraStatFlat("versatility")
+Charsheet.versatility = function(self, unit)
+    local vAuraFlat = unit:auraStatFlat("versatility")
     local value = (vAuraFlat + self:diminishSecondaryStat("versatility")) / 100
     return value
 end
 
-Charsheet.crit = function(self)
-    local cAuraFlat = self.unit:auraStatFlat("crit")
+Charsheet.crit = function(self, unit)
+    local cAuraFlat = unit:auraStatFlat("crit")
     local value = 0.05 + (cAuraFlat + self:diminishSecondaryStat("crit")) / 100
     return value
 end
 
-Charsheet.haste = function(self)
-    local hAuraMod = self.unit:auraStatMod("haste")
+Charsheet.haste = function(self, unit)
+    local hAuraMod = unit:auraStatMod("haste")
     local value = (1 + self:diminishSecondaryStat("haste") / 100) * hAuraMod - 1
     return value
 end
 
-Charsheet.armor = function(self)
-    local aAuraFlat = self.unit:auraStatFlat("armor")
-    local aAuraMod = self.unit:auraStatMod("armor")
-    local base = math.round(self.equipment:aggregate("armor") + 2 * self:agility())
+Charsheet.armor = function(self, unit)
+    local aAuraFlat = unit:auraStatFlat("armor")
+    local aAuraMod = unit:auraStatMod("armor")
+    local base = math.round(self.equipment:aggregate("armor") + 2 * self:agility(unit))
     local value = (base * aAuraMod) + aAuraFlat
     return value
 end
 
-Charsheet.physicalDR = function(self, enemySheet)
-    local armor = self:armor()
+Charsheet.physicalDR = function(self, unit, enemySheet)
+    local armor = self:armor(unit)
     return (armor / (85 * enemySheet.level + armor + 400))
 end
 
@@ -170,9 +172,16 @@ Charsheet.totalOffHandDamage = function(self)
     return self.equipment.slots[Slots.OffHand]:flat("weaponDamage")
 end
 
-Charsheet.mitigate = function(self, damage, school, isMassive)
+Charsheet.gcd = function(self, unit, gcdEnum) --Return GCD length, considering haste.
+    local haste = self:haste(unit)
+    local gcd = GCDTimeouts[gcdEnum]
+    return gcd / (1 + haste)
+end
+
+
+Charsheet.mitigate = function(self, unit, damage, school, isMassive)
     if school == Schools.Physical then
-        damage = damage * (1 - self:physicalDR(school))
+        damage = damage * (1 - self:physicalDR(school, unit))
     end
 
     return damage

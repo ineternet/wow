@@ -12,7 +12,8 @@ TargetUnit.new = Constructor(TargetUnit, {
 
     charsheet = use"Charsheet".new,
 }, function(self)
-    self.charsheet.unit = self
+    --self.charsheet = ref(use"Charsheet".new())
+    --self.charsheet.unit = ref(self)
 end)
 
 TargetUnit.hasAura = function(self, auradef)

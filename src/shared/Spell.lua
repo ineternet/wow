@@ -5,7 +5,7 @@ local Spell = use"Object".inherit"Spell"
 local Linebreak = "\n\n"
 
 local function spellDummy(spell, castingUnit, spellTarget, spellLocation)
-    return function() end
+    return function() end --If this function returns "true", following effects will NOT be applied.
 end
 
 Spell.SchoolDamage = function(castingUnit, spellTarget, damage, school, pvpModifier, forceCrit)
@@ -52,10 +52,114 @@ local function applyAura(args)
     end
 end
 
+local function removeAura(args)
+    return function(spell, castingUnit, spellTarget, _)
+        local dispelMode = args.dispelMode
+        if not dispelMode then
+            dispelMode = DispelMode.All
+        end
+        if dispelMode == DispelMode.None then
+            return
+        end
+
+        local markedForRemoval = {}
+        local amountMarked = 0
+        local latestTime = 0
+        local latestAura = nil
+        for i, auraInstance in ipairs(spellTarget.auras) do
+            if auraInstance.aura == args.aura then
+                if dispelMode ~= DispelMode.Latest then
+                    markedForRemoval[i] = true
+                else
+                    if auraInstance.appliedAt > latestTime then
+                        latestTime = auraInstance.appliedAt
+                        latestAura = i
+                    end
+                end
+                if dispelMode == DispelMode.First then
+                    break
+                elseif dispelMode == DispelMode.All then
+                    --Do nothing
+                elseif dispelMode == DispelMode.SpecificAmount then
+                    if #markedForRemoval >= args.amount then
+                        break
+                    end
+                end
+            end
+        end
+        if latestAura then
+            markedForRemoval[latestAura] = true
+        end
+        
+        local shift = 0
+        local fTop = #spellTarget.auras
+        for i = 1, fTop do
+            if markedForRemoval[i-1] then
+                shift = shift + 1
+            end
+            if shift > 0 then
+                spellTarget.auras[i-shift] = spellTarget.auras[i]
+            end
+        end
+        for i = fTop-shift+1, fTop do
+            spellTarget.auras[i] = nil
+        end --TODO: May need to finalize each aura to clear connections
+    end
+end
+
 local function projectile(args)
     return function(spell, castingUnit, spellTarget, spellLocation)
         print("Blocking for 1 second to simulate projectile travel time.")
         task.wait(1)
+    end
+end
+
+local function multi(args) --Wrap multiple effects in a single function, preserving order
+    return function(...)
+        for i, v in ipairs(args) do
+            v(...)
+        end
+    end
+end
+
+--[[
+    
+        effects = {
+            ifHasAura(Auras.HeatingUp) {
+                dropFollowingEffects = true,
+                multi {
+                    removeAura {
+                        aura = Auras.HeatingUp,
+                        dispelMode = DispelMode.All,
+                    },
+                    applyAura {
+                        aura = Auras.HotStreak,
+                        auraData = {
+                            duration = 10,
+                        },
+                    },
+            },
+            applyAura {
+                aura = Auras.HeatingUp,
+                auraData = {
+                    duration = 10,
+                },
+            },
+        }
+]]
+
+local function ifHasAura(aura)
+    return function(args)
+        return function(spell, castingUnit, spellTarget, spellLocation)
+            local effect = args.effect
+            local compoundReturn = args.dropFollowingEffects
+
+            if castingUnit:hasAura(aura) then
+                compoundReturn = compoundReturn or effect(spell, castingUnit, spellTarget, spellLocation)
+            end
+
+            return compoundReturn
+        end
     end
 end
 
@@ -102,6 +206,9 @@ Spells.FireBlast:assign({
         },
     },
 
+    castableWhileCasting = function(unit)
+        return unit.charsheet.spec == Specs.Fire
+    end,
 })
 
 Spells.Fireball = Spell.new()
@@ -156,16 +263,18 @@ Spells.HotStreak:assign({
     effects = {
         ifHasAura(Auras.HeatingUp) {
             dropFollowingEffects = true,
-            removeAura {
-                aura = Auras.HeatingUp,
-                dispelMode = DispelMode.All,
-            },
-            applyAura {
-                aura = Auras.HotStreak,
-                auraData = {
-                    duration = 10,
+            effect = multi {
+                removeAura {
+                    aura = Auras.HeatingUp,
+                    dispelMode = DispelMode.All,
                 },
-            },
+                applyAura {
+                    aura = Auras.HotStreak,
+                    auraData = {
+                        duration = 10,
+                    },
+                },
+            }
         },
         applyAura {
             aura = Auras.HeatingUp,

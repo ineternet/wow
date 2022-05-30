@@ -72,14 +72,14 @@ ResourceUnit.manaAt = function(sheet)
     return BaseMana[sheet.level]
 end
 
-ResourceUnit.inferMaximum = function(forResource, fromSheet)
+ResourceUnit.inferMaximum = function(self, forResource, fromSheet)
     if not fromSheet then
         return 0
     end
     return ({
         [Resources.None] = 0,
         [Resources.Mana] = ResourceUnit.manaAt(fromSheet),
-        [Resources.Health] = fromSheet:stamina() * 10,
+        [Resources.Health] = fromSheet:stamina(self) * 10,
         [Resources.Fury] = 100,
         [Resources.Focus] = 100,
         [Resources.Energy] = 100,
@@ -184,11 +184,11 @@ ResourceUnit.setResources = function(self, class, spec)
     self.tertiaryResource = ResourceUnit.inferTertiary(class, spec)
     self.quaternaryResource = ResourceUnit.inferQuaternary(class, spec)
     self.quinaryResource = ResourceUnit.inferQuinary(class, spec)
-    self.primaryResourceMaximum = ResourceUnit.inferMaximum(self.primaryResource, self.charsheet)
-    self.secondaryResourceMaximum = ResourceUnit.inferMaximum(self.secondaryResource, self.charsheet)
-    self.tertiaryResourceMaximum = ResourceUnit.inferMaximum(self.tertiaryResource, self.charsheet)
-    self.quaternaryResourceMaximum = ResourceUnit.inferMaximum(self.quaternaryResource, self.charsheet)
-    self.quinaryResourceMaximum = ResourceUnit.inferMaximum(self.quinaryResource, self.charsheet)
+    self.primaryResourceMaximum = self:inferMaximum(self.primaryResource, self.charsheet)
+    self.secondaryResourceMaximum = self:inferMaximum(self.secondaryResource, self.charsheet)
+    self.tertiaryResourceMaximum = self:inferMaximum(self.tertiaryResource, self.charsheet)
+    self.quaternaryResourceMaximum = self:inferMaximum(self.quaternaryResource, self.charsheet)
+    self.quinaryResourceMaximum = self:inferMaximum(self.quinaryResource, self.charsheet)
 end
 
 ResourceUnit.updateClassResources = function(self)
@@ -210,15 +210,15 @@ ResourceUnit.resolveRaw = function(self, resourceType, amount)
     return amount
 end
 
-ResourceUnit.cast = function(self, spell)
+ResourceUnit.hardCast = function(self, spell) --For casts
     if self.currentAction == Actions.Casting then
         return false
     end
     self.currentAction = Actions.Casting
     self.actionBegin = utctime()
     self.actionEnd = utctime() + (spell.castTime or 0)
-    self.gcdEnd = utctime() + GCDTimeout[spell.gcd]
-    self.currentSpell = spell
+    self.gcdEnd = utctime() + self.charsheet:gcd(spell.gcd)
+    self.lastSpell = spell
 
     local spellTarget = self.target
     local spellLocation = self.location
@@ -233,13 +233,80 @@ ResourceUnit.cast = function(self, spell)
             self:deltaResourceAmount(spell.resource, -self:resolveRaw(spell.resource, spell.resourceCost))
             self.currentAction = Actions.Idle
             for order, effect in ipairs(spell.effects) do
-                print("Effect " .. order .. ": ", effect)
-                --spellDummy(spell, castingUnit, spellTarget, spellLocation)
-                effect(spell, self, spellTarget, spellLocation)
+                if effect(spell, self, spellTarget, spellLocation) then
+                    break
+                end
             end
         end
     end)
     return true
+end
+
+ResourceUnit.channelCast = function(self, spell) --For channels
+    error("Channel casts not yet implemented.")
+end
+
+ResourceUnit.instantCast = function(self, spell) --For instant casts
+    local isMidCastCast = false
+    if self.currentAction == Actions.Casting then
+        if not spell.castableWhileCasting(self) then
+            self.interruptCast()
+        else
+            isMidCastCast = true
+        end
+    end
+
+    local thisSpellGcdEnd = utctime() + self.charsheet:gcd(spell.gcd)
+
+    if not isMidCastCast then --If this is a mid-cast cast, preserve the old information
+        self.currentAction = Actions.Idle --We immediately go to idle because the cast is instant
+        self.actionBegin = utctime()
+        self.actionEnd = utctime() --Duh
+        self.gcdEnd = thisSpellGcdEnd
+        self.lastSpell = spell
+    else --Still update GCD if the old GCD would end too early.
+        self.gcdEnd = math.max(self.gcdEnd, thisSpellGcdEnd)
+    end
+
+    local spellTarget = self.target
+    local spellLocation = self.location
+
+    self:deltaResourceAmount(spell.resource, -self:resolveRaw(spell.resource, spell.resourceCost))
+    for order, effect in ipairs(spell.effects) do
+        if effect(spell, self, spellTarget, spellLocation) then
+            break
+        end
+    end
+
+    return true
+end
+
+ResourceUnit.passiveCast = function(self, spell) --For passive procs
+    error("Passive casts not yet implemented.")
+end
+
+ResourceUnit.cast = function(self, spell)
+    local casttype = spell.castType
+    local spellidx = Spells[spell] --To avoid an error on the client
+
+    --Check for cast type modifiers from auras
+    --For example some passive procs will cause auras that turn some spells into instant casts.
+    for _, aura in ipairs(self.auras) do
+        if aura.aura.modCastType then
+            local thisSpellMod = aura.aura.modCastType[spellidx]
+            if thisSpellMod then
+                casttype = thisSpellMod
+                break
+            end
+        end
+    end
+
+    ({
+        [CastType.Instant] = ResourceUnit.instantCast,
+        [CastType.Channel] = ResourceUnit.channelCast,
+        [CastType.Cast]    = ResourceUnit.hardCast,
+        [CastType.Passive] = ResourceUnit.passiveCast,
+    })[casttype](self, spell)
 end
 
 ResourceUnit.takeDamage = function(self, damage, school)

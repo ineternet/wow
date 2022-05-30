@@ -376,6 +376,11 @@ const = {
         Latest = 2, --Only the latest aura is dispelled.
         All = 3, --All auras are dispelled.
         SpecificAmount = 4, --Only a specific amount of auras are dispelled. The amount is specified in "dispelAmount".
+    },
+    Request = bidirectional {
+        Generic = 0,
+        Downstream = 1,
+        ThisUnit = 2,
     }
 }
 

@@ -43,6 +43,55 @@ Object.new = AbstractClassConstructor
 
 -- Functions
 
+local downstreamRemote = Instance.new("RemoteFunction")
+Object.downstream = function(self) --This is called on clients and requests the server to update this object.
+    local strobj = downstreamRemote.InvokeServer(Remote, Request.Downstream, UniqueRequestId(), self.ref)
+
+    self:Deserialize(strobj)
+
+    return nil --Does not return the new object, only updates the given reference
+end
+if game:GetService("RunService"):IsServer() then
+    Retrieve.OnServerInvoke = function(player, request, requestId, dsRef) --This handles downstream requests
+        if request ~= Request.Downstream then return end
+        local obj = __FindByReference(dsRef)
+        local objInfo = obj:RemoteSerialize()
+        return objInfo --Give the object info back to the client
+    end
+end
+
+Object.Serialize = function(self) --Serialize the object into a string
+    --[[local valTable = {}
+    valTable.table = {}
+    valTable.metatable = {}
+    for k, v in pairs(self) do
+        valTable.table[k] = v
+    end
+    for k, v in pairs(getmetatable(self)) do
+        valTable.metatable[k] = v
+    end
+    return jsonEncode(valTable)]]
+    return self --Roblox serialization may do this on its own
+end
+
+Object.Deserialize = function(self, str)
+    --[[local valTable = jsonDecode(str)
+    for k, v in pairs(valTable.table) do
+        self[k] = v
+    end
+    for k, v in pairs(valTable.metatable) do
+        getmetatable(self)[k] = v
+    end]]
+    for k, v in pairs(str) do
+        self[k] = v
+    end
+    return nil
+end
+
+Object.RemoteSerialize = Object.Serialize
+Object.DataStoreSerialize = Object.Serialize
+Object.HttpSerialize = Object.Serialize
+
 Object.GetType = function(self)
     assertObj(self)
     return self.type
