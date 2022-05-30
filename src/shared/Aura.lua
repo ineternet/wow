@@ -3,6 +3,8 @@ setfenv(1, require(script.Parent.Global))
 local Aura = use"Object".inherit"Aura"
 local AuraInstance = use"Object".inherit"AuraInstance"
 
+local Linebreak = "\n"
+
 local function auraDummy(spell, castingUnit, spellTarget, spellLocation)
 
 end
@@ -61,7 +63,7 @@ end
 
 AuraInstance.new = Constructor(AuraInstance, {})
 Aura.new = Constructor(Aura, {
-    effectType = AuraEffectType.None, --Default effect type is none.
+    effectType = AuraDispelType.None, --Default effect type is none.
 })
 
 Auras.MortalWounds = Aura.new()
@@ -88,7 +90,7 @@ Auras.PyroblastDot:assign({
     onTick = function(aura, deltaTime, owner, tickStrength)
         use"Spell".SchoolDamage(aura.causer, owner, (aura.damage(aura.causer.charsheet) / aura.duration) * tickStrength, Schools.Fire, 1)
     end,
-    effectType = AuraEffectType.Magic,
+    effectType = AuraDispelType.Magic,
     affectedByCauserHaste = true,
     --baseTicks = 8,
 })
@@ -111,7 +113,7 @@ Auras.BearForm:assign({
     name = "Bear Form",
     tooltip = function(sheet)
         local str = "Shapeshifted into a bear."
-        str = str .. "\n\n" .. "Armor increased by %s. Stamina increased by %s."
+        str = str .. Linebreak .. "Armor increased by %s. Stamina increased by %s."
         return str
     end,
     icon = "rbxassetid://1337",

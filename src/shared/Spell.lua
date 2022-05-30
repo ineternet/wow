@@ -2,6 +2,8 @@ setfenv(1, require(script.Parent.Global))
 
 local Spell = use"Object".inherit"Spell"
 
+local Linebreak = "\n\n"
+
 local function spellDummy(spell, castingUnit, spellTarget, spellLocation)
     return function() end
 end
@@ -67,10 +69,10 @@ Spells.FireBlast:assign({
     tooltip = function(sheet)
         local str = "Blast an enemy for %s Fire damage."
         if sheet.spec == Specs.Fire then
-            str = str .. "\n\n" .. "Castable while casting other spells."
+            str = str .. Linebreak .. "Castable while casting other spells."
         end
         if sheet.spec == Specs.Fire and sheet.level >= 18 then
-            str = str .. "\n\n" .. "Always critically strikes."
+            str = str .. Linebreak .. "Always critically strikes."
         end
         return str
     end,
@@ -139,13 +141,49 @@ Spells.Fireball:assign({
 
 })
 
+Spells.HotStreak = Spell.new()
+Spells.HotStreak:assign({
+    name = "Hot Streak",
+    tooltip = function(sheet)
+        local str = "Whenever you land two critical strikes in a row, your next Pyroblast or Flamestrike will be instant cast."
+        return str
+    end,
+    icon = "rbxassetid://1337",
+
+    castType = CastType.Passive,
+
+    school = Schools.Physical,
+    effects = {
+        ifHasAura(Auras.HeatingUp) {
+            dropFollowingEffects = true,
+            removeAura {
+                aura = Auras.HeatingUp,
+                dispelMode = DispelMode.All,
+            },
+            applyAura {
+                aura = Auras.HotStreak,
+                auraData = {
+                    duration = 10,
+                },
+            },
+        },
+        applyAura {
+            aura = Auras.HeatingUp,
+            auraData = {
+                duration = 10,
+            },
+        },
+    },
+
+})
+
 Spells.Pyroblast = Spell.new()
 Spells.Pyroblast:assign({
     name = "Pyroblast",
     tooltip = function(sheet)
         local str = "Conjures an immense boulder of flame that deals %s Fire damage."
         if sheet.spec == Specs.Fire and sheet.level >= 54 then
-            str = str .. "\n\n" .. "Additionally burns the target for %s Fire damage over %s seconds."
+            str = str .. Linebreak .. "Additionally burns the target for %s Fire damage over %s seconds."
         end
         return str
     end,
@@ -241,7 +279,7 @@ Spells.MortalStrike:assign({
     tooltip = function(sheet)
         local mwAura = Auras.MortalWounds
         local str = "A vicious strike that deals %s Physical damage and applies " .. mwAura.name .. " for %s seconds."
-        str = str .. "\n\n" .. mwAura.name .. ": " .. mwAura.tooltip(sheet)
+        str = str .. Linebreak .. mwAura.name .. ": " .. mwAura.tooltip(sheet)
         return str
     end,
     icon = "rbxassetid://1337",

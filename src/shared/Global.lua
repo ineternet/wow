@@ -96,7 +96,7 @@ end
 for k, v in pairs(const) do
     fenv[k] = v
 end
-if _VERSION ~= "Luau" then
+if _VERSION ~= "Luau" then --Lua 5.1 support
     fenv.math.round = function(x)
         if x > 0 then
             return math.floor(x + 0.5)
@@ -113,5 +113,9 @@ if _VERSION ~= "Luau" then
         end
         return x
     end
+    fenv.utctime = os.time
+else --if Luau
+    fenv.utctime = tick
 end
+
 return fenv
