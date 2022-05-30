@@ -69,7 +69,7 @@ ResourceUnit.manaAt = function(sheet)
     }, sheet.class) then
         mod = 5
     end
-    return BaseMana[sheet.level]
+    return mod * BaseMana[sheet.level]
 end
 
 ResourceUnit.inferMaximum = function(self, forResource, fromSheet)
@@ -121,6 +121,9 @@ ResourceUnit.new = Constructor(ResourceUnit, {
     lastAggressiveAction = utctime(),
 
     soulFragmentRegenTick = utctime(),
+
+    spellbook = use"Spellbook".new,
+
 }, function(self)
     table.insert(self.eventConnections, game:GetService("RunService").Heartbeat:Connect(function(dt)
         self:tick(dt)

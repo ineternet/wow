@@ -139,7 +139,7 @@ Global.Remote = game:GetService("ReplicatedStorage"):WaitForChild("Replicate")
 Global.Retrieve = game:GetService("ReplicatedStorage"):WaitForChild("Retrieve")
 
 local function setRefMt(obj)
-    return setmetatable({ ref = obj.ref }, {
+    return setmetatable({ ref = obj.ref, type = obj.type }, {
         __index = function(t, k)
             local obj = Global.__FindByReference(t.ref)
             if obj then

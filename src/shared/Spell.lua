@@ -19,6 +19,11 @@ Spell.SchoolDamage = function(castingUnit, spellTarget, damage, school, pvpModif
         damage = damage * (critm)
     end
     spellTarget:takeDamage(damage, school)
+
+    --Spellbook triggers
+    if crit then
+        castingUnit.spellbook:onSpellCritical(castingUnit, spell, spellTarget, spellLocation)
+    end
 end
 local function schoolDamage(args)
     return function(spell, castingUnit, spellTarget, _)
@@ -90,7 +95,7 @@ local function removeAura(args)
         if latestAura then
             markedForRemoval[latestAura] = true
         end
-        
+
         local shift = 0
         local fTop = #spellTarget.auras
         for i = 1, fTop do
