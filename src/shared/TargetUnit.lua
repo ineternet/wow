@@ -15,6 +15,15 @@ TargetUnit.new = Constructor(TargetUnit, {
     self.charsheet.unit = self
 end)
 
+TargetUnit.hasAura = function(self, auradef)
+    for i, aura in ipairs(self.auras) do
+        if aura.aura == auradef and not aura.invalidate then
+            return true
+        end
+    end
+    return false
+end
+
 TargetUnit.tick = function(self, deltaTime)
     local toRemove = {}
     for i, aura in ipairs(self.auras) do

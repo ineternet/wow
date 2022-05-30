@@ -62,6 +62,8 @@ local function pround(a1, a2)
     return math.round(a1) .. " / " .. math.round(a2)
 end
 
+local pblast = game:GetService("ServerStorage").Pyroblast:Clone()
+
 local RunService = game:GetService("RunService")
 RunService.Heartbeat:Connect(function(dt)
     fr.EnemyFullDesc.Text = ("Enemy: Level %s"):format(enemy.charsheet.level)
@@ -98,6 +100,13 @@ RunService.Heartbeat:Connect(function(dt)
     enemyframe.SecondaryResourceBar.Fill.Size = UDim2.new(pratio, 0, 1, 0)
     enemyframe.SecondaryResourceBar.Resource.Text = pround(pamount, pmax)
     enemyframe.SecondaryResourceBar.Resource.Shadow.Text = pround(pamount, pmax)
+    
+    pblast.Parent = nil
+    for i, aura in pairs(enemy.auras) do
+        if aura.aura.name == "Pyroblast" then
+            pblast.Parent = enemyframe.Auras
+        end
+    end
 end)
 
 print("Targeting enemy.")

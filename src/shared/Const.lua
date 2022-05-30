@@ -207,7 +207,7 @@ const = {
                 stamina = 5,
                 weaponSpeed = 1.4,
                 weaponDamage = 4,
-                haste = 300,
+                --haste = 300,
             }
         }
     }, {

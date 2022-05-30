@@ -8,8 +8,8 @@ local Charclass = require(script.Parent.Charclass)
 Charsheet.new = Constructor(Charsheet, {
     level = 1,
 
-    class = Classes.Warrior,
-    race = Races.Human,
+    class = Classes.Classless,
+    race = Races.None,
     spec = Specs.None,
 
     equipment = use"Equipment".new,
@@ -27,8 +27,8 @@ end
 
 Charsheet.isTank = function(self)
     if self.spec == Specs.Guardian then
-        --TODO return isBear
-        return true
+        local isBear = self.unit:hasAura(Auras.BearForm)
+        return isBear
     end
     return ({
         [Specs.Protection] = true,

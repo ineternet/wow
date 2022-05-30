@@ -106,4 +106,19 @@ Auras.FlamestrikeSlow:assign({
     }
 })
 
+Auras.BearForm = Aura.new()
+Auras.BearForm:assign({
+    name = "Bear Form",
+    tooltip = function(sheet)
+        local str = "Shapeshifted into a bear."
+        str = str .. "\n\n" .. "Armor increased by %s. Stamina increased by %s."
+        return str
+    end,
+    icon = "rbxassetid://1337",
+    statMod = {
+        armor = 2.2,
+        stamina = 0.25,
+    }
+})
+
 return Aura
