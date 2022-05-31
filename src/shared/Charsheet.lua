@@ -182,7 +182,6 @@ end
 Charsheet.mitigate = function(self, unit, causerSheet, damage, school, isMassive)
     if school == Schools.Physical then
         local dr = self:physicalDR(unit, causerSheet or { level = self.level })
-        print("Physical DR: " .. dr)
         damage = damage * (1 - dr)
     end
 

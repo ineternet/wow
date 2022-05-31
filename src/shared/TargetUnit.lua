@@ -28,7 +28,8 @@ end
 TargetUnit.tick = function(self, deltaTime)
     local toRemove = {}
     local triggerRemove = false
-    for i, aura in ipairs(self.auras) do
+    local auras = self.auras.noproxy
+    for i, aura in ipairs(auras) do
         if aura.invalidate then
             for _, event in ipairs(aura.eventConnections) do
                 event:Disconnect()
@@ -42,7 +43,7 @@ TargetUnit.tick = function(self, deltaTime)
 
     if triggerRemove then
         local shift = 0
-        local fTop = #self.auras
+        local fTop = #auras
         for i = 1, fTop do
             if toRemove[i-1] then
                 shift = shift + 1

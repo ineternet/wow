@@ -4,11 +4,8 @@ local const = require(game.ReplicatedStorage.Common.Const)
 local env = require(game.ReplicatedStorage.Common.Global)
 
 env.Retrieve.OnServerInvoke = function(player, action, arg)
-    print("Retrieve: " .. action)
     if action == "getref" then
-        print("Retrieving reference: " .. arg, "for player: " .. player.Name)
         local obj = env.__FindByReference(arg).noproxy
-        print(obj)
         return obj
     end
 end
@@ -57,7 +54,7 @@ game:GetService("Players").PlayerAdded:Connect(function(p)
     --game:GetService("ReplicatedStorage"):WaitForChild("Replicate"):FireClient(p, char)
     print("Before pass:", char)
     env.Remote:FireClient(p, "passchar", char.noproxy)
-    task.wait(5)
+    task.wait(1)
     --print("Dealing damage now")
     --char:takeDamage(20, env.Schools.Physical)
     --print("Hp after:", enemy.primaryResourceAmount)

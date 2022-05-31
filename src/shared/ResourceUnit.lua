@@ -223,8 +223,8 @@ ResourceUnit.hardCast = function(self, spell) --For casts
     self.currentAction = Actions.Casting
     self.actionBegin = utctime()
     self.actionEnd = utctime() + (spell.castTime or 0)
-    self.gcdEnd = utctime() + self.charsheet:gcd(self, spell.gcd)
-    self.lastSpell = spell
+    self.gcdEnd = utctime() + self.charsheet:gcd(self, spell.gcd or GCD.Standard)
+    self.lastSpell = ref(spell)
 
     local spellTarget = self.target
     local spellLocation = self.location
@@ -236,7 +236,9 @@ ResourceUnit.hardCast = function(self, spell) --For casts
     castDuration = castDuration / (1 + self.charsheet:haste(self))
     task.delay(castDuration, function()
         if not interrupted then
-            self:deltaResourceAmount(spell.resource, -self:resolveRaw(spell.resource, spell.resourceCost))
+            if spell.resourceCost then
+                self:deltaResourceAmount(spell.resource, -self:resolveRaw(spell.resource, spell.resourceCost))
+            end
             self.currentAction = Actions.Idle
             for order, effect in ipairs(spell.effects) do
                 if effect(spell, self, spellTarget, spellLocation) then
@@ -262,14 +264,14 @@ ResourceUnit.instantCast = function(self, spell) --For instant casts
         end
     end
 
-    local thisSpellGcdEnd = utctime() + self.charsheet:gcd(self, spell.gcd)
+    local thisSpellGcdEnd = utctime() + self.charsheet:gcd(self, spell.gcd or GCD.Standard)
 
     if not isMidCastCast then --If this is a mid-cast cast, preserve the old information
         self.currentAction = Actions.Idle --We immediately go to idle because the cast is instant
         self.actionBegin = utctime()
         self.actionEnd = utctime() --Duh
         self.gcdEnd = thisSpellGcdEnd
-        self.lastSpell = spell
+        self.lastSpell = ref(spell)
     else --Still update GCD if the old GCD would end too early.
         self.gcdEnd = math.max(self.gcdEnd, thisSpellGcdEnd)
     end
@@ -277,7 +279,9 @@ ResourceUnit.instantCast = function(self, spell) --For instant casts
     local spellTarget = self.target
     local spellLocation = self.location
 
-    self:deltaResourceAmount(spell.resource, -self:resolveRaw(spell.resource, spell.resourceCost))
+    if spell.resourceCost then
+        self:deltaResourceAmount(spell.resource, -self:resolveRaw(spell.resource, spell.resourceCost))
+    end
     for order, effect in ipairs(spell.effects) do
         if effect(spell, self, spellTarget, spellLocation) then
             break

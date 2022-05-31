@@ -86,7 +86,6 @@ RunService.Heartbeat:Connect(function(dt)
     
     pblast.Parent = nil
     for i, aura in ipairs(enemy.auras) do
-        print(aura)
         if aura.aura.name == "Pyroblast" then
             pblast.Parent = enemyframe.Auras
         end
@@ -106,11 +105,9 @@ env.Remote.OnClientEvent:Connect(function(action, obj)
                 --Object doesnt exist on this side.
                 --TODO: Create new object from new request
 
-                print("Failed to update ref", ref, "will retrieve from server. Following is the object:")
-                print(obj)
+                
                 local cobj = env.__FindByReference(ref) --This will create the object
                 if not cobj then --Nil means another task is creating the object
-                    print("Object is already being created. Will drop this update.")
                     return
                 end
                 --Retry
@@ -122,8 +119,6 @@ env.Remote.OnClientEvent:Connect(function(action, obj)
                         enemy = refobj
                     end
                 end
-
-                --print(obj)
                 
                 --env.__SetReference(ref, obj)
                 --env.RestoreMt(obj)
@@ -149,6 +144,9 @@ game:GetService("UserInputService").InputBegan:Connect(function(io, gpc)
         elseif io.KeyCode == Enum.KeyCode.Three then
             --Pyroblast
             env.Remote:FireServer(env.Request.CastSpell, env.Spells.Pyroblast.id)
+        elseif io.KeyCode == Enum.KeyCode.Four then
+            --Pyroblast
+            env.Remote:FireServer(env.Request.CastSpell, env.Spells.ApplyDummyAura.id)
         end
     end
 end)

@@ -45,12 +45,13 @@ AuraInstance.tick = function(self, deltaTime, owner)
         end
         if self.elapsedPart >= nextLogicalTick then
             self.remainingTicks = self.remainingTicks - 1
-            --print("Ticking aura now. Remaining ticks: " .. self.remainingTicks .. ", Partial tick: " .. partialTick, ", Elapsed since start: " .. (utctime() - self.appliedAt))
+            print("Ticking aura now. Remaining ticks: " .. self.remainingTicks .. ", Partial tick: " .. partialTick, ", Elapsed since start: " .. (utctime() - self.appliedAt))
             self.aura.onTick(self, deltaTime, owner, partialTick)
         end
     end
 
-    --print("Added to part:", (deltaTime / self.duration) * hasted, "Haste modifier:", hasted)
+    print(self)
+    print("Added to part:", (deltaTime / self.duration) * hasted, "Haste modifier:", hasted)
     self.elapsedPart = self.elapsedPart + (deltaTime / self.duration) * hasted
 end
 
@@ -93,6 +94,17 @@ Auras.PyroblastDot:assign({
     effectType = AuraDispelType.Magic,
     affectedByCauserHaste = true,
     --baseTicks = 8,
+})
+
+Auras.Dummy = Aura.new()
+Auras.Dummy:assign({
+    name = "Dummy",
+    tooltip = function(sheet)
+        local str = "Dummy"
+        return str
+    end,
+    icon = "rbxassetid://1337",
+    effectType = AuraDispelType.None,
 })
 
 Auras.FlamestrikeSlow = Aura.new()

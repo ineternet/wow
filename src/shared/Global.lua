@@ -67,11 +67,7 @@ if game:GetService("RunService"):IsServer() then
             if obj.dirty then
                 local nt = {}
                 for _, dirtyKey in ipairs(obj.dirtyKeys) do
-                    if dirtyKey == "auras" then
-                        print"Auras is dirty"
-                        print(obj[dirtyKey])
-                    end
-                    if type(obj[dirtyKey]) == "table" and obj[dirtyKey].ref then
+                    if type(obj[dirtyKey]) == "table" and obj[dirtyKey].noproxy ~= nil then
                         nt[dirtyKey] = obj[dirtyKey].noproxy
                     else
                         nt[dirtyKey] = obj[dirtyKey]
@@ -85,7 +81,6 @@ if game:GetService("RunService"):IsServer() then
         end
 
         if count > 0 then
-            --print("Updating " .. count .. " dirty objects.")
             Global.Remote:FireAllClients(Request.FullObjectDelta, toUpdateObjects)
             toUpdateObjects = {}
         end
@@ -123,9 +118,9 @@ Global.__MakeObject = function(ofType) --Create object. EVERY created object cal
     newobj.eventConnections = {}
     setmetatable(newobj, {
         __index = ofType,
-        __tostring = function(t)
-            return ("(%s@%s)"):format(t.type, t.ref)
-        end
+        --__tostring = function(t)
+        --    return ("(%s@%s)"):format(t.type, t.ref)
+        --end
     })
     local proxy = { dirtyKeys = {}, dirty = false }
     setmetatable(proxy, {
@@ -135,18 +130,21 @@ Global.__MakeObject = function(ofType) --Create object. EVERY created object cal
             elseif k == "noproxy" then
                 local clone = {}
                 for k, v in pairs(newobj) do
-                    if type(v) == "table" and v.ref then --Object needs to be noproxy'd
-                        clone[k] = v.noproxy
+                    if type(v) == "table" and v.dirty ~= nil and not v.__isRef then
+                        local npx = v.noproxy
+                        clone[k] = npx
                     else
                         clone[k] = v
                     end
                 end
+                --Metatable is not passed on recursion but required for container iterations
+                setmetatable(clone, getmetatable(newobj))
                 return clone
             end
             local ret = newobj[k]
-            if type(ret) == "table" and not ret.ref then --Containers
+            --if type(ret) == "table" and not ret.ref then --Containers
 
-            end
+            --end
             return ret
         end,
         __newindex = function(t, k, v)
@@ -170,7 +168,6 @@ end
 Global.UpdateFromDelta = function(ref, obj)
     local existObj = objectIndex[ref]
     if existObj then
-        --print(obj)
         for k, v in pairs(obj) do
             existObj[k] = v
         end
@@ -196,21 +193,29 @@ Global.Constructor = function(ofType, withValues, postConstructor)
                 for k, v in pairs(withValues) do
                     if type(v) == "table" then --We assume this is an empty table
                         local nt = {}
-                        local proxytable = { dirty = false, noproxy = nt }
-                        setmetatable(proxytable, {
-                            __index = function(t, k)
-                                if k ~= "dirty" then
-                                    mo.dirty = true
-                                    table.insert(mo.dirtyKeys, k)
-                                    --proxytable.dirty = true
+                        local proxytable = { dirty = false }
+                        setmetatable(proxytable, { --Container proxy
+                            __index = function(t, i)
+                                if i == "noproxy" then
+                                    --Return base table + all child refs have to be noproxy
+                                    local clone = {}
+                                    for k, v in pairs(nt) do
+                                        if type(v) == "table" and v.dirty ~= nil then
+                                            --Set metatable, this is required per side
+                                            --clone[k] = setmetatable(v.noproxy, getmetatable(nt))
+                                            clone[k] = v.noproxy
+                                        else
+                                            clone[k] = v
+                                        end
+                                    end
+                                    return clone
                                 end
-                                return nt[k]
+                                return nt[i]
                             end,
-                            __newindex = function(t, k, v)
-                                nt[k] = v
+                            __newindex = function(t, i, v)
+                                nt[i] = v
                                 mo.dirty = true
                                 table.insert(mo.dirtyKeys, k)
-                                --proxytable.dirty = true
                             end
                         })
                         mo[k] = proxytable
@@ -227,6 +232,10 @@ Global.Constructor = function(ofType, withValues, postConstructor)
             return mo
         end
     --})
+end
+
+Global.replicatedInsert = function(tbl, val)
+    tbl[#tbl + 1] = ref(val)
 end
 
 Global.use = function(strType)
@@ -254,6 +263,9 @@ Global.Retrieve = game:GetService("ReplicatedStorage"):WaitForChild("Retrieve")
 local function setRefMt(obj)
     return setmetatable({ ref = obj.ref, type = obj.type }, {
         __index = function(t, k)
+            if k == "__isRef" then
+                return true
+            end
             local obj = Global.__FindByReference(t.ref)
             if obj then
                 return obj[k]

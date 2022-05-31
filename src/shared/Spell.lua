@@ -51,9 +51,10 @@ local function applyAura(args)
         for k, v in pairs(args.auraData or {}) do
             auraInstance[k] = v
         end
-        auraInstance.causer = castingUnit
+        auraInstance.causer = ref(castingUnit)
         print("Applying aura to", spellTarget, "for", args.auraData.duration)
-        table.insert(spellTarget.auras, auraInstance)
+        --table.insert(spellTarget.auras, auraInstance)
+        replicatedInsert(spellTarget.auras, auraInstance)
     end
 end
 
@@ -176,6 +177,21 @@ Spell.new = Constructor(Spell, {
     logicalIncrement = logicalIncrement + 1
     self.id = logicalIncrement
 end)
+
+Spells.ApplyDummyAura = Spell.new()
+Spells.ApplyDummyAura:assign({
+    name = "Apply Dummy Aura",
+    description = "Applies a dummy aura to the target.",
+    icon = "rbxassetid://1337",
+    effects = {
+        applyAura {
+            aura = Auras.Dummy,
+            auraData = {
+                duration = 100,
+            },
+        },
+    },
+})
 
 Spells.FireBlast = Spell.new()
 Spells.FireBlast:assign({

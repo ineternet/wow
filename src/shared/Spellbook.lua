@@ -21,7 +21,7 @@ Spellbook.hasSpell = function(self, spell)
     assertObj(spell)
     spell:assertIs("Spell")
     
-    for _, spellbookSpell in pairs(self.spells) do
+    for _, spellbookSpell in ipairs(self.spells) do
         if spellbookSpell.id == spell.id then
             return true
         end
