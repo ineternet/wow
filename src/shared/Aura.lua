@@ -23,7 +23,7 @@ AuraInstance.tick = function(self, deltaTime, owner)
     and self.causer
     and self.causer.charsheet
     and self.causer.charsheet.haste then
-        hasted = 1 + self.causer.charsheet:haste()
+        hasted = 1 + self.causer.charsheet:haste(owner)
     end
 
     
@@ -88,7 +88,7 @@ Auras.PyroblastDot:assign({
     end,
     icon = "rbxassetid://1337",
     onTick = function(aura, deltaTime, owner, tickStrength)
-        use"Spell".SchoolDamage(aura.causer, owner, (aura.damage(aura.causer.charsheet) / aura.duration) * tickStrength, Schools.Fire, 1)
+        use"Spell".SchoolDamage(aura.causer, owner, (aura.damage(aura.causer, aura.causer.charsheet) / aura.duration) * tickStrength, Schools.Fire, 1)
     end,
     effectType = AuraDispelType.Magic,
     affectedByCauserHaste = true,

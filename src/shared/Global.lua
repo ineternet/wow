@@ -26,7 +26,7 @@ end
 
 Global.ValueEquals = function(a, b)
     for ak, av in pairs(a) do
-        if ak ~= "ref" and ak ~= "eventConnections" and Global.IsPrimitive(av) then
+        if ak ~= "ref" and ak ~= "eventConnections" and ak ~= "type" and Global.IsPrimitive(av) then
             if b[ak] ~= av then
                 return false
             end
@@ -36,13 +36,20 @@ Global.ValueEquals = function(a, b)
 end
 
 local objectIndex = {}
+local activeRetrievals = {}
 Global.__FindByReference = function(ref)
     local obj = objectIndex[ref]
     if not obj and not game:GetService("RunService"):IsServer() then
+        if activeRetrievals[ref] then
+            warn("Object reference " .. ref .. " is already being retrieved. Returning nil.")
+            return nil
+        end
+        activeRetrievals[ref] = true
         obj = Global.Retrieve:InvokeServer("getref", ref)
         if obj then
+            Global.__SetReference(ref, obj)
             Global.RestoreMt(obj)
-            objectIndex[ref] = obj
+            activeRetrievals[ref] = false
         else
             error("Could not find object with reference " .. tostring(ref))
         end
@@ -52,20 +59,60 @@ Global.__FindByReference = function(ref)
     return obj
 end
 
+if game:GetService("RunService"):IsServer() then
+    local toUpdateObjects = {}
+    game:GetService("RunService").Heartbeat:Connect(function()
+        local count = 0
+        for ref, obj in pairs(objectIndex) do
+            if obj.dirty then
+                local nt = {}
+                for _, dirtyKey in ipairs(obj.dirtyKeys) do
+                    if dirtyKey == "auras" then
+                        print"Auras is dirty"
+                        print(obj[dirtyKey])
+                    end
+                    if type(obj[dirtyKey]) == "table" and obj[dirtyKey].ref then
+                        nt[dirtyKey] = obj[dirtyKey].noproxy
+                    else
+                        nt[dirtyKey] = obj[dirtyKey]
+                    end
+                end
+                toUpdateObjects[ref] = nt
+                count = count + 1
+                obj.dirty = false
+                obj.dirtyKeys = {}
+            end
+        end
+
+        if count > 0 then
+            --print("Updating " .. count .. " dirty objects.")
+            Global.Remote:FireAllClients(Request.FullObjectDelta, toUpdateObjects)
+            toUpdateObjects = {}
+        end
+    end)
+end
+
 Global.__RegisterType = function(strType, typeDef)
     typeIndex[strType] = typeDef
     typeIndex[typeDef] = strType
 end
 
+local isServer = game:GetService("RunService"):IsServer()
+
 local clientTypes = {
+    --These types:
+    -- - Can be created on client side
+    -- - Do not get marked dirty
+    --   -> do not get passed from server to client on change
     Spell = true,
     Item = true,
     Aura = true,
     Timer = true
 }
-Global.__MakeObject = function(ofType)
+
+Global.__MakeObject = function(ofType) --Create object. EVERY created object calls this.
     if not game:GetService("RunService"):IsServer() then
-        --Create is allowed only for certain types
+        --Client create is allowed only for certain types
         if not clientTypes[ofType.type] then
             error("Cannot create object " .. tostring(ofType.type) .. " on client")
         end
@@ -80,8 +127,56 @@ Global.__MakeObject = function(ofType)
             return ("(%s@%s)"):format(t.type, t.ref)
         end
     })
-    Global.__SetReference(newobj.ref, newobj)
-    return newobj
+    local proxy = { dirtyKeys = {}, dirty = false }
+    setmetatable(proxy, {
+        __index = function(t, k)
+            if k == "noproxy_nonrecursive" then
+                return newobj
+            elseif k == "noproxy" then
+                local clone = {}
+                for k, v in pairs(newobj) do
+                    if type(v) == "table" and v.ref then --Object needs to be noproxy'd
+                        clone[k] = v.noproxy
+                    else
+                        clone[k] = v
+                    end
+                end
+                return clone
+            end
+            local ret = newobj[k]
+            if type(ret) == "table" and not ret.ref then --Containers
+
+            end
+            return ret
+        end,
+        __newindex = function(t, k, v)
+            newobj[k] = v
+            if k ~= "dirty" --Prevent infinite recursion
+            and isServer --Dirty updates go from server to client only
+            and not clientTypes[ofType.type] --Dirty updates are only sent to client for certain types
+            then
+                table.insert(proxy.dirtyKeys, k)
+                proxy.dirty = true
+            end
+        end,
+        __tostring = function(t)
+            return tostring(newobj)
+        end
+    })
+    Global.__SetReference(newobj.ref, proxy)
+    return proxy
+end
+
+Global.UpdateFromDelta = function(ref, obj)
+    local existObj = objectIndex[ref]
+    if existObj then
+        --print(obj)
+        for k, v in pairs(obj) do
+            existObj[k] = v
+        end
+        return true
+    end
+    return false
 end
 
 Global.__SetReference = function(ref, obj)
@@ -100,7 +195,25 @@ Global.Constructor = function(ofType, withValues, postConstructor)
             if type(withValues) == "table" then
                 for k, v in pairs(withValues) do
                     if type(v) == "table" then --We assume this is an empty table
-                        mo[k] = {}
+                        local nt = {}
+                        local proxytable = { dirty = false, noproxy = nt }
+                        setmetatable(proxytable, {
+                            __index = function(t, k)
+                                if k ~= "dirty" then
+                                    mo.dirty = true
+                                    table.insert(mo.dirtyKeys, k)
+                                    --proxytable.dirty = true
+                                end
+                                return nt[k]
+                            end,
+                            __newindex = function(t, k, v)
+                                nt[k] = v
+                                mo.dirty = true
+                                table.insert(mo.dirtyKeys, k)
+                                --proxytable.dirty = true
+                            end
+                        })
+                        mo[k] = proxytable
                     elseif type(v) == "function" then --We assume the constructor wants to call this function
                         mo[k] = v()
                     else
@@ -132,7 +245,7 @@ Global.using = function(strType, funcOnX, ...)
 end
 
 Global.assertObj = function(d)
-    assert(d and type(d) == "table" and d.is, "expected (Object), got " .. type(d) .. " (missing 'is')")
+    assert(d and type(d) == "table" and d.is, "expected (Object), got " .. type(d) .. " (missing 'is')" .. (type(d) == "string" and ", did you mean to write :is?" or ""))
 end
 
 Global.Remote = game:GetService("ReplicatedStorage"):WaitForChild("Replicate")
@@ -179,6 +292,11 @@ end]]
 Global.RestoreMt = function(obj)
     assert(not getmetatable(obj), "Object already has a metatable")
     
+    if obj.type == nil then
+        warn("Attempted to use nil type when restoring MT, table follows")
+        print(obj)
+    end
+
     --Set metatable to the object's type
     setmetatable(obj, {
         __index = use(obj.type)

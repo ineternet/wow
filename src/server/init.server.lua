@@ -7,7 +7,9 @@ env.Retrieve.OnServerInvoke = function(player, action, arg)
     print("Retrieve: " .. action)
     if action == "getref" then
         print("Retrieving reference: " .. arg, "for player: " .. player.Name)
-        return env.__FindByReference(arg)
+        local obj = env.__FindByReference(arg).noproxy
+        print(obj)
+        return obj
     end
 end
 
@@ -53,12 +55,25 @@ game:GetService("Players").PlayerAdded:Connect(function(p)
     --env.safeObj(char)
     --print(char)
     --game:GetService("ReplicatedStorage"):WaitForChild("Replicate"):FireClient(p, char)
-    env.Remote:FireClient(p, "passchar", char)
+    print("Before pass:", char)
+    env.Remote:FireClient(p, "passchar", char.noproxy)
+    task.wait(5)
+    --print("Dealing damage now")
+    --char:takeDamage(20, env.Schools.Physical)
+    --print("Hp after:", enemy.primaryResourceAmount)
     --env.restoreSafeObj(char)
+
+    print("Updating enemy to force update.")
+    --enemy.charsheet.level = enemy.charsheet.level + 1
+    enemy.display = "This Enemy"
 end)
 
-game:GetService("ReplicatedStorage").Replicate.OnServerEvent:Connect(function(plr, action, arg)
-
+env.Remote.OnServerEvent:Connect(function(plr, action, arg)
+    if action == env.Request.CastSpell then
+        local spell = env.Spells[arg]
+        print("Attempting to cast spell " .. spell.name)
+        char:wantToCast(spell)
+    end
 end)
 
 --const.Retrieve.OnServerInvoke = function()

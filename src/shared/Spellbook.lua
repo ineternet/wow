@@ -22,7 +22,7 @@ Spellbook.hasSpell = function(self, spell)
     spell:assertIs("Spell")
     
     for _, spellbookSpell in pairs(self.spells) do
-        if spellbookSpell:ReferenceEquals(spell) then
+        if spellbookSpell.id == spell.id then
             return true
         end
     end

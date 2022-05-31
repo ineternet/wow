@@ -27,7 +27,7 @@ Spell.SchoolDamage = function(castingUnit, spellTarget, damage, school, pvpModif
 end
 local function schoolDamage(args)
     return function(spell, castingUnit, spellTarget, _)
-        local damage = args.damage(castingUnit.charsheet)
+        local damage = args.damage(castingUnit, castingUnit.charsheet)
         local school = args.school
         Spell.SchoolDamage(castingUnit, spellTarget, damage, school, args.pvp, args.forceCrit)
     end
@@ -168,9 +168,14 @@ local function ifHasAura(aura)
     end
 end
 
+local logicalIncrement = 0
 Spell.new = Constructor(Spell, {
 
-})
+}, function(self)
+    --Automatically assign id to have a common reference point sides
+    logicalIncrement = logicalIncrement + 1
+    self.id = logicalIncrement
+end)
 
 Spells.FireBlast = Spell.new()
 Spells.FireBlast:assign({
@@ -203,8 +208,8 @@ Spells.FireBlast:assign({
     effects = {
         schoolDamage {
             school = Schools.Fire,
-            damage = function(sheet)
-                return 1 * sheet:spellPower()
+            damage = function(caster, sheet)
+                return 1 * sheet:spellPower(caster)
             end,
             forceCrit = true,
             pvp = 0.8
@@ -231,7 +236,7 @@ Spells.Fireball:assign({
     cooldown = 0,
     gcd = GCD.Standard,
 
-    castType = CastType.Cast,
+    castType = CastType.Casting,
     castTime = 3,
     targetType = TargetType.Enemy,
     range = Range.Long,
@@ -245,8 +250,8 @@ Spells.Fireball:assign({
         },
         schoolDamage {
             school = Schools.Fire,
-            damage = function(sheet)
-                return 2 * sheet:spellPower()
+            damage = function(caster, sheet)
+                return 2 * sheet:spellPower(caster)
             end
         },
     },
@@ -309,7 +314,7 @@ Spells.Pyroblast:assign({
     cooldown = 0,
     gcd = GCD.Standard,
 
-    castType = CastType.Cast,
+    castType = CastType.Casting,
     castTime = 4.5,
     targetType = TargetType.Enemy,
     range = Range.Long,
@@ -324,16 +329,16 @@ Spells.Pyroblast:assign({
         },
         schoolDamage {
             school = Schools.Fire,
-            damage = function(sheet)
-                return 1.5 * sheet:spellPower()
+            damage = function(caster, sheet)
+                return 1.5 * sheet:spellPower(caster)
             end,
         },
         applyAura {
             aura = Auras.PyroblastDot,
             auraData = {
                 duration = 6,
-                damage = function(sheet)
-                    return 0.5 * sheet:spellPower()
+                damage = function(caster, sheet)
+                    return 0.5 * sheet:spellPower(caster)
                 end,
             },
         },
@@ -356,7 +361,7 @@ Spells.Flamestrike:assign({
     cooldown = 0,
     gcd = GCD.Standard,
 
-    castType = CastType.Cast,
+    castType = CastType.Casting,
     castTime = 4,
     targetType = TargetType.Area,
     areaSize = 5,
@@ -371,8 +376,8 @@ Spells.Flamestrike:assign({
             effects = {
                 schoolDamage {
                     school = Schools.Fire,
-                    damage = function(sheet)
-                        return 0.55 * sheet:spellPower()
+                    damage = function(caster, sheet)
+                        return 0.55 * sheet:spellPower(caster)
                     end,
                 },
                 applyAura {
@@ -412,8 +417,8 @@ Spells.MortalStrike:assign({
     effects = {
         schoolDamage {
             school = Schools.Physical,
-            damage = function(sheet)
-                return 1.6 * sheet:attackPower()
+            damage = function(caster, sheet)
+                return 1.6 * sheet:attackPower(caster)
             end,
             pvp = 0.76
         },
@@ -440,7 +445,7 @@ Spells.WaterElemental:assign({
     cooldown = 0,
     gcd = GCD.Standard,
 
-    castType = CastType.Cast,
+    castType = CastType.Casting,
     castTime = 2,
     targetType = TargetType.Self,
 
@@ -469,7 +474,7 @@ Spells.FlashOfLight:assign({
     cooldown = 0,
     gcd = GCD.Standard,
 
-    castType = CastType.Cast,
+    castType = CastType.Casting,
     castTime = 0.7,
     targetType = TargetType.Friendly,
     range = Range.Long,
@@ -478,8 +483,8 @@ Spells.FlashOfLight:assign({
     effects = {
         schoolHeal {
             school = Schools.Holy,
-            amount = function(sheet)
-                return 2 * sheet:spellPower()
+            amount = function(caster, sheet)
+                return 2 * sheet:spellPower(caster)
             end
         },
     },

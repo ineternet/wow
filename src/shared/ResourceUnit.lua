@@ -164,6 +164,9 @@ ResourceUnit.setResourceAmount = function(self, resourceType, amount)
 
     local pool = self:getPool(resourceType)
     if pool then
+        if self[("%sAmount"):format(pool)] == amount then
+            return --Avoid unnecessary updates
+        end
         self[("%sAmount"):format(pool)] = math.clamp(amount, 0, self[("%sMaximum"):format(pool)])
     end
 end
@@ -220,7 +223,7 @@ ResourceUnit.hardCast = function(self, spell) --For casts
     self.currentAction = Actions.Casting
     self.actionBegin = utctime()
     self.actionEnd = utctime() + (spell.castTime or 0)
-    self.gcdEnd = utctime() + self.charsheet:gcd(spell.gcd)
+    self.gcdEnd = utctime() + self.charsheet:gcd(self, spell.gcd)
     self.lastSpell = spell
 
     local spellTarget = self.target
@@ -230,7 +233,7 @@ ResourceUnit.hardCast = function(self, spell) --For casts
         interrupted = true
     end
     local castDuration = self.actionEnd - utctime()
-    castDuration = castDuration / (1 + self.charsheet:haste())
+    castDuration = castDuration / (1 + self.charsheet:haste(self))
     task.delay(castDuration, function()
         if not interrupted then
             self:deltaResourceAmount(spell.resource, -self:resolveRaw(spell.resource, spell.resourceCost))
@@ -259,7 +262,7 @@ ResourceUnit.instantCast = function(self, spell) --For instant casts
         end
     end
 
-    local thisSpellGcdEnd = utctime() + self.charsheet:gcd(spell.gcd)
+    local thisSpellGcdEnd = utctime() + self.charsheet:gcd(self, spell.gcd)
 
     if not isMidCastCast then --If this is a mid-cast cast, preserve the old information
         self.currentAction = Actions.Idle --We immediately go to idle because the cast is instant
@@ -290,7 +293,7 @@ end
 
 ResourceUnit.cast = function(self, spell)
     local casttype = spell.castType
-    local spellidx = Spells[spell] --To avoid an error on the client
+    local spellidx = spell.index --To avoid an error on the client
 
     --Check for cast type modifiers from auras
     --For example some passive procs will cause auras that turn some spells into instant casts.
@@ -304,21 +307,31 @@ ResourceUnit.cast = function(self, spell)
         end
     end
 
+    if not casttype then
+        warn("No cast type for spell " .. spell.name)
+        casttype = CastType.Instant
+    end
+
     ({
         [CastType.Instant] = ResourceUnit.instantCast,
-        [CastType.Channel] = ResourceUnit.channelCast,
-        [CastType.Cast]    = ResourceUnit.hardCast,
+        [CastType.Channeled] = ResourceUnit.channelCast,
+        [CastType.Casting]    = ResourceUnit.hardCast,
         [CastType.Passive] = ResourceUnit.passiveCast,
     })[casttype](self, spell)
 end
 
-ResourceUnit.takeDamage = function(self, damage, school)
-    assert(damage >= 0, "Damage must be positive")
-    assert(school ~= nil, "School must be specified")
-    assert(self:getPool(Resources.Health), "Cannot damage healthless unit")
+ResourceUnit.wantToCast = function(self, spell) --On user input, on npc logic
+    self:cast(spell)
+end
+
+ResourceUnit.takeDamage = function(self, damage, school, sourceUnit)
+    assert(tonumber(damage), "Damage must be a number.")
+    assert(damage >= 0, "Damage must be positive.")
+    assert(school ~= nil, "School must be specified.")
+    assert(self:getPool(Resources.Health), "Cannot damage healthless unit.")
 
     local isMassiveDamage = damage > self.primaryResourceMaximum
-    local postMitigation = self.charsheet:mitigate(damage, school, isMassiveDamage)
+    local postMitigation = self.charsheet:mitigate(self, sourceUnit and sourceUnit.charsheet, damage, school, isMassiveDamage)
 
     self.primaryResourceAmount = math.max(self.primaryResourceAmount - postMitigation, 0)
     if self.primaryResourceAmount <= 0 then
@@ -356,7 +369,7 @@ ResourceUnit.regenTick = function(self, timeSinceLastTick, inCombat)
 end
 
 ResourceUnit.procCrit = function(self, spell)
-    local critChance = self.charsheet:crit()
+    local critChance = self.charsheet:crit(self)
     if critChance > 0 then
         local critRoll = math.random()
         if critRoll < critChance then

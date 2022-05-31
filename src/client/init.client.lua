@@ -28,6 +28,15 @@ local function pround(a1, a2)
     return math.round(a1) .. " / " .. math.round(a2)
 end
 
+local function rawtostring(t)
+    local m=getmetatable(t)
+    local f=m.__tostring
+    m.__tostring=nil
+    local s=tostring(t)
+    m.__tostring=f
+    return s
+ end
+
 local pblast = game:GetService("ReplicatedFirst").Pyroblast:Clone()
 local char, enemy
 local RunService = game:GetService("RunService")
@@ -57,6 +66,10 @@ RunService.Heartbeat:Connect(function(dt)
 
     if not enemy then
         return end
+
+    enemyframe.UnitName.Text = enemy.display .. " (" .. enemy.charsheet.level .. ")"
+    enemyframe.UnitName.Shadow.Text = enemy.display .. " (" .. enemy.charsheet.level .. ")"
+
     local pamount = enemy.primaryResourceAmount
     local pmax = enemy.primaryResourceMaximum
     local pratio = pamount / pmax
@@ -72,7 +85,8 @@ RunService.Heartbeat:Connect(function(dt)
     enemyframe.SecondaryResourceBar.Resource.Shadow.Text = pround(pamount, pmax)
     
     pblast.Parent = nil
-    for i, aura in pairs(enemy.auras) do
+    for i, aura in ipairs(enemy.auras) do
+        print(aura)
         if aura.aura.name == "Pyroblast" then
             pblast.Parent = enemyframe.Auras
         end
@@ -83,28 +97,58 @@ end)
 
 --print(myChar:spellPower())
 
+--Global.Remote:FireAllClients(Request.FullObjectDelta, toUpdateObjects)
+
 env.Remote.OnClientEvent:Connect(function(action, obj)
-    if action == "updateref" then
-        env.__SetReference(obj.ref, obj)
-        env.RestoreMt(obj)
-        print("From SINGLE REF:", obj)
-    elseif action == "updaterefs" then
-        for i, objx in pairs(obj) do
-            env.__SetReference(objx.ref, objx)
-            env.RestoreMt(objx)
-            print("From REFS:", objx)
+    if action == env.Request.FullObjectDelta then
+        for ref, obj in pairs(obj) do
+            if not env.UpdateFromDelta(ref, obj) then --Try to update existing object
+                --Object doesnt exist on this side.
+                --TODO: Create new object from new request
+
+                print("Failed to update ref", ref, "will retrieve from server. Following is the object:")
+                print(obj)
+                local cobj = env.__FindByReference(ref) --This will create the object
+                if not cobj then --Nil means another task is creating the object
+                    print("Object is already being created. Will drop this update.")
+                    return
+                end
+                --Retry
+                if not env.UpdateFromDelta(ref, obj) then
+                    error("Could not resolve object reference " .. ref .. " even after retry.")
+                else
+                    local refobj = env.__FindByReference(ref)
+                    if not enemy and refobj:is"Unit" then
+                        enemy = refobj
+                    end
+                end
+
+                --print(obj)
+                
+                --env.__SetReference(ref, obj)
+                --env.RestoreMt(obj)
+            end
         end
     end
 
     if action == "passchar" then
+        env.__SetReference(obj.ref, obj)
         env.RestoreMt(obj)
-        print("Got char:", obj)
         char = obj
     end
+end)
 
-    --[[print(char)
-    env.RestoreMt(char)
-    print(char)
-    print(getmetatable(char))
-    print(char.charsheet:spellPower())]]
+game:GetService("UserInputService").InputBegan:Connect(function(io, gpc)
+    if gpc then
+        return
+    end
+    if io.UserInputType == Enum.UserInputType.Keyboard then
+        if io.KeyCode == Enum.KeyCode.Two then
+            --Fire blast
+            env.Remote:FireServer(env.Request.CastSpell, env.Spells.FireBlast.id)
+        elseif io.KeyCode == Enum.KeyCode.Three then
+            --Pyroblast
+            env.Remote:FireServer(env.Request.CastSpell, env.Spells.Pyroblast.id)
+        end
+    end
 end)

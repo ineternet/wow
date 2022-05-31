@@ -174,14 +174,16 @@ end
 
 Charsheet.gcd = function(self, unit, gcdEnum) --Return GCD length, considering haste.
     local haste = self:haste(unit)
-    local gcd = GCDTimeouts[gcdEnum]
+    local gcd = GCDTimeout[gcdEnum]
     return gcd / (1 + haste)
 end
 
 
-Charsheet.mitigate = function(self, unit, damage, school, isMassive)
+Charsheet.mitigate = function(self, unit, causerSheet, damage, school, isMassive)
     if school == Schools.Physical then
-        damage = damage * (1 - self:physicalDR(school, unit))
+        local dr = self:physicalDR(unit, causerSheet or { level = self.level })
+        print("Physical DR: " .. dr)
+        damage = damage * (1 - dr)
     end
 
     return damage

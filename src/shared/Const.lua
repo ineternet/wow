@@ -330,7 +330,10 @@ const = {
         Area = 5, --Spell is an area effect. Shows a preview of the area on cast.
     },
     Schools = { --Spell and aura school types
+        None = 0, --Same as physical. For readability only - treated as physical.
         Physical = 0,
+
+        --The following are all magical
         Holy = 1,
         Fire = 2,
         Nature = 3,
@@ -378,9 +381,16 @@ const = {
         SpecificAmount = 4, --Only a specific amount of auras are dispelled. The amount is specified in "dispelAmount".
     },
     Request = bidirectional {
-        Generic = 0,
-        Downstream = 1,
-        ThisUnit = 2,
+        Generic = 0, --Any request not specified below
+        Downstream = 1, --Ask to update object manually
+        ThisUnit = 2, --Get information about myself
+        FullObjectDelta = 3, --Passing full object delta (all dirty objects)
+        CastSpell = 4, --Cast a spell
+    },
+    Side = {
+        Server = 0,
+        Client = 1,
+        Both = 2,
     }
 }
 
@@ -444,14 +454,19 @@ const.Spells = setmetatable({
 
 }, {
     __index = function(t, k)
-        local rg = rawget(t, k)
+        local rg
+        if tonumber(k) then --Spell Id
+            rg = rawget(t, k)
+        else
+            rg = rawget(t, k)
+        end
         if not rg then
             if not confirmedNonExistingSpells[k] then
                 require(script.Parent.Spell)
                 rg = rawget(t, k)
                 if not rg then
                     confirmedNonExistingSpells[k] = true
-                    warn("Error: Spell with index " .. k .. " does not exist. Returning empty spell in the future.")
+                    warn("Error: Spell with index " .. tostring(k) .. " does not exist. Returning empty spell in the future.")
                     return {}
                 end
             else
@@ -459,7 +474,15 @@ const.Spells = setmetatable({
             end
         end
         return rg
-    end
+    end,
+    __newindex = function(t, k, v)
+        --Assign ID when adding new spell
+        rawset(t, v.id, v)
+        --Assign index when adding new spell
+        rawset(v, "index", k)
+        --default behavior
+        rawset(t, k, v)
+    end,
 })
 
 local confirmedNonExistingAuras = {} --Auras that are confirmed to not exist as not to spam warnings

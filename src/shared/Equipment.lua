@@ -7,7 +7,7 @@ local Equipment = use"Object".inherit"Equipment"
 local itemStringConstructor = use"Item".newOf
 Equipment.new = Constructor(Equipment, {
     slots = {
-        --For now code everything to work with nil values, still unclear if this will use nil values or "null items".
+        --For now code everything to work with nil values AND "null items". Still unclear if this will use nil values or "null items".
         --[[[Slots.Head] = itemStringConstructor"NullItem",
         [Slots.Neck] = itemStringConstructor"NullItem",
         [Slots.Back] = itemStringConstructor"NullItem",
@@ -39,13 +39,13 @@ Equipment.new = Constructor(Equipment, {
 
 function Equipment:aggregate(stat)
     local base = 0
-    for _, item in pairs(self.slots) do
+    for _, item in pairs(self.slots.noproxy) do
         if item and item:def() and item:def().flat and item:def().flat[stat] then
             base = base + item:flat(stat)
         end
     end
     local percentage = 1
-    for _, item in pairs(self.slots) do
+    for _, item in pairs(self.slots.noproxy) do
         if item and item:def() and item:def().percentage and item:def().percentage[stat] then
             percentage = percentage * item:percentage(stat)
         end
