@@ -217,10 +217,10 @@ ResourceUnit.resolveRaw = function(self, resourceType, amount)
 end
 
 ResourceUnit.hardCast = function(self, spell) --For casts
-    if self.currentAction == Actions.Casting then
+    if self.currentAction == Actions.Cast then
         return false
     end
-    self.currentAction = Actions.Casting
+    self.currentAction = Actions.Cast
     self.actionBegin = utctime()
     self.actionEnd = utctime() + (spell.castTime or 0)
     self.gcdEnd = utctime() + self.charsheet:gcd(self, spell.gcd or GCD.Standard)
@@ -256,7 +256,7 @@ end
 
 ResourceUnit.instantCast = function(self, spell) --For instant casts
     local isMidCastCast = false
-    if self.currentAction == Actions.Casting then
+    if self.currentAction == Actions.Cast then
         if not spell.castableWhileCasting(self) then
             self.interruptCast()
         else

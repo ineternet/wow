@@ -49,6 +49,10 @@ RunService.Heartbeat:Connect(function(dt)
 
     local castRatio = (env.utctime() - char.actionBegin) / const.Spells.Pyroblast.castTime
     castRatio = math.min(1, castRatio)
+    --print(char.currentAction)
+    local casting = char.currentAction == const.Actions.Cast
+    sg.Hud.CastBar.Visible = casting
+    sg.Hud.CastBar.Fill.Size = UDim2.new(castRatio, 0, 1, 0)
 
     local pamount = char.primaryResourceAmount
     local pmax = char.primaryResourceMaximum

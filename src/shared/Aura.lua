@@ -50,8 +50,8 @@ AuraInstance.tick = function(self, deltaTime, owner)
         end
     end
 
-    print(self)
-    print("Added to part:", (deltaTime / self.duration) * hasted, "Haste modifier:", hasted)
+    --print(self)
+    --print("Added to part:", (deltaTime / self.duration) * hasted, "Haste modifier:", hasted)
     self.elapsedPart = self.elapsedPart + (deltaTime / self.duration) * hasted
 end
 

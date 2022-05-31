@@ -30,6 +30,9 @@ TargetUnit.tick = function(self, deltaTime)
     local triggerRemove = false
     local auras = self.auras.noproxy
     for i, aura in ipairs(auras) do
+        --TODO: noproxy generates a clone, so we can use it for iterating,
+        --but not for mutation. Either make a unified iterator or dont clone in noproxy
+        local aura = self.auras[i]
         if aura.invalidate then
             for _, event in ipairs(aura.eventConnections) do
                 event:Disconnect()
@@ -44,7 +47,7 @@ TargetUnit.tick = function(self, deltaTime)
     if triggerRemove then
         local shift = 0
         local fTop = #auras
-        for i = 1, fTop do
+        for i = 1, fTop+1 do
             if toRemove[i-1] then
                 shift = shift + 1
             end
