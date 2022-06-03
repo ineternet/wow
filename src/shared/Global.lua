@@ -234,8 +234,10 @@ Global.Constructor = function(ofType, withValues, postConstructor)
     --})
 end
 
+--Argument 1: Object array proxy
+--Argument 2: The object value to insert
 Global.replicatedInsert = function(tbl, val)
-    tbl[#tbl + 1] = ref(val)
+    tbl[#tbl.noproxy + 1] = ref(val)
 end
 
 Global.use = function(strType)
@@ -255,6 +257,11 @@ end
 
 Global.assertObj = function(d)
     assert(d and type(d) == "table" and d.is, "expected (Object), got " .. type(d) .. " (missing 'is')" .. (type(d) == "string" and ", did you mean to write :is?" or ""))
+end
+
+Global.assertIs = function(d, strType)
+    Global.assertObj(d)
+    d:assertIs(strType)
 end
 
 Global.Remote = game:GetService("ReplicatedStorage"):WaitForChild("Replicate")

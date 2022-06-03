@@ -62,10 +62,25 @@ Aura.createInstance = function(self)
     return aura
 end
 
+local QueryHandler = {
+    RemoveThisAura = function(dispelMode)
+        return function(self, unit)
+            print"Aura queries"
+            use"Spell".RemoveAura(unit, self.aura, dispelMode)
+        end
+    end
+}
+
+
+local logicalIncrement = 0
 AuraInstance.new = Constructor(AuraInstance, {})
 Aura.new = Constructor(Aura, {
     effectType = AuraDispelType.None, --Default effect type is none.
-})
+}, function(self)
+    --Automatically assign id to have a common reference point sides
+    logicalIncrement = logicalIncrement + 1
+    self.id = logicalIncrement
+end)
 
 Auras.MortalWounds = Aura.new()
 Auras.MortalWounds:assign({
@@ -92,15 +107,33 @@ Auras.PyroblastDot:assign({
         use"Spell".SchoolDamage(aura.causer, owner, (aura.damage(aura.causer, aura.causer.charsheet) / aura.duration) * tickStrength, Schools.Fire, 1)
     end,
     effectType = AuraDispelType.Magic,
+    auraType = AuraType.Debuff,
+    decayType = AuraDecayType.Timed,
     affectedByCauserHaste = true,
     --baseTicks = 8,
 })
 
+Auras.ArcaneIntellect = Aura.new()
+Auras.ArcaneIntellect:assign({
+    name = "Arcane Intellect",
+    tooltip = function(sheet)
+        local str = "Intellect increased by %s%%."
+        return str
+    end,
+    icon = "rbxassetid://1337",
+    statMod = {
+        intellect = 0.05,
+    },
+    effectType = AuraDispelType.Magic,
+    auraType = AuraType.Buff,
+    decayType = AuraDecayType.Timed,
+})
+
 Auras.Dummy = Aura.new()
 Auras.Dummy:assign({
-    name = "Dummy",
+    name = "",
     tooltip = function(sheet)
-        local str = "Dummy"
+        local str = ""
         return str
     end,
     icon = "rbxassetid://1337",
@@ -117,7 +150,10 @@ Auras.FlamestrikeSlow:assign({
     icon = "rbxassetid://1337",
     statMod = {
         speed = -0.2,
-    }
+    },
+    effectType = AuraDispelType.Magic,
+    auraType = AuraType.Debuff,
+    decayType = AuraDecayType.Timed,
 })
 
 Auras.HeatingUp = Aura.new()
@@ -127,7 +163,10 @@ Auras.HeatingUp:assign({
         local str = "This unit has scored a spell critical and will gain Hot Streak if another follows."
         return str
     end,
-    icon = "rbxassetid://1337"
+    icon = "rbxassetid://1337",
+    effectType = AuraDispelType.None,
+    auraType = AuraType.InternalBuff,
+    decayType = AuraDecayType.Timed,
 })
 
 Auras.HotStreak = Aura.new()
@@ -141,7 +180,11 @@ Auras.HotStreak:assign({
     modCastType = {
         Pyroblast = CastType.Instant,
         Flamestrike = CastType.Instant,
-    }
+    },
+    onQuery = QueryHandler.RemoveThisAura(DispelMode.All),
+    effectType = AuraDispelType.None,
+    auraType = AuraType.InternalBuff,
+    decayType = AuraDecayType.Timed,
 })
 
 Auras.BearForm = Aura.new()
@@ -156,7 +199,10 @@ Auras.BearForm:assign({
     statMod = {
         armor = 2.2,
         stamina = 0.25,
-    }
+    },
+    effectType = AuraDispelType.None,
+    auraType = AuraType.InternalBuff,
+    decayType = AuraDecayType.None,
 })
 
 return Aura

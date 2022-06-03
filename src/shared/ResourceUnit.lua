@@ -216,7 +216,7 @@ ResourceUnit.resolveRaw = function(self, resourceType, amount)
     return amount
 end
 
-ResourceUnit.hardCast = function(self, spell) --For casts
+ResourceUnit.hardCast = function(self, spell, spellTarget, spellLocation) --For casts
     if self.currentAction == Actions.Cast then
         return false
     end
@@ -226,8 +226,6 @@ ResourceUnit.hardCast = function(self, spell) --For casts
     self.gcdEnd = utctime() + self.charsheet:gcd(self, spell.gcd or GCD.Standard)
     self.lastSpell = ref(spell)
 
-    local spellTarget = self.target
-    local spellLocation = self.location
     local interrupted = false
     self.interruptCast = function()
         interrupted = true
@@ -250,11 +248,11 @@ ResourceUnit.hardCast = function(self, spell) --For casts
     return true
 end
 
-ResourceUnit.channelCast = function(self, spell) --For channels
+ResourceUnit.channelCast = function(self, spell, spellTarget, spellLocation) --For channels
     error("Channel casts not yet implemented.")
 end
 
-ResourceUnit.instantCast = function(self, spell) --For instant casts
+ResourceUnit.instantCast = function(self, spell, spellTarget, spellLocation) --For instant casts
     local isMidCastCast = false
     if self.currentAction == Actions.Cast then
         if not spell.castableWhileCasting(self) then
@@ -276,9 +274,6 @@ ResourceUnit.instantCast = function(self, spell) --For instant casts
         self.gcdEnd = math.max(self.gcdEnd, thisSpellGcdEnd)
     end
 
-    local spellTarget = self.target
-    local spellLocation = self.location
-
     if spell.resourceCost then
         self:deltaResourceAmount(spell.resource, -self:resolveRaw(spell.resource, spell.resourceCost))
     end
@@ -291,21 +286,71 @@ ResourceUnit.instantCast = function(self, spell) --For instant casts
     return true
 end
 
-ResourceUnit.passiveCast = function(self, spell) --For passive procs
-    error("Passive casts not yet implemented.")
+ResourceUnit.passiveCast = function(self, spell, spellTarget, spellLocation) --For passive procs
+    --We dont set any timers or the last spell here
+
+    if spell.resourceCost then
+        self:deltaResourceAmount(spell.resource, -self:resolveRaw(spell.resource, spell.resourceCost))
+    end
+
+    for order, effect in ipairs(spell.effects) do
+        print("Passive cast effect:", effect)
+        if effect(spell, self, spellTarget, spellLocation) then
+            break
+        end
+    end
+
+    return true
 end
 
-ResourceUnit.cast = function(self, spell)
+ResourceUnit.die = void
+
+ResourceUnit.canCast = function(self, spell, target, location)
+    --Check if we can cast the spell
+    -- 1 Check if we have enough resources, if the spell has a resource cost
+    -- 2 Check if we are in range
+    -- 3 Check if we are in line of sight, if required
+    -- 4 Check if we are facing the target, if applicable and required
+    -- 5 Check if global cooldown is up, or if we are casting a spell that doesn't have a GCD
+
+    --1
+    if spell.resourceCost then
+        local resourceAmount = self:getResourceAmount(spell.resource)
+        local resourceCost = self:resolveRaw(spell.resource, spell.resourceCost)
+        if resourceAmount < resourceCost then
+            return false, "Not enough " .. ResourceNames[spell.resource]
+        end
+    end
+
+    --2
+    if spell.range then
+        local distance = target:distanceFrom(self.location)
+        if distance > spell.range then
+            return false, "Target out of range"
+        end
+    end
+
+
+end
+
+ResourceUnit.cast = function(self, spell, target, location)
     local casttype = spell.castType
     local spellidx = spell.index --To avoid an error on the client
 
+    local target = target or self.target
+    local location = location or self.location
+
+    local queriedAuras = {}
     --Check for cast type modifiers from auras
     --For example some passive procs will cause auras that turn some spells into instant casts.
-    for _, aura in ipairs(self.auras) do
+    for _, aura in ipairs(self.auras.noproxy) do
         if aura.aura.modCastType then
             local thisSpellMod = aura.aura.modCastType[spellidx]
             if thisSpellMod then
                 casttype = thisSpellMod
+                if aura.aura.onQuery then
+                    table.insert(queriedAuras, aura)
+                end
                 break
             end
         end
@@ -316,16 +361,46 @@ ResourceUnit.cast = function(self, spell)
         casttype = CastType.Instant
     end
 
+    if spell.targetType == TargetType.Self then
+        target = self
+    elseif spell.targetType == TargetType.Friendly then
+        print(self:isFriendly(target), "<- friendly. DEBUG: FALLING BACK TO SELF")
+        target = self
+    elseif spell.targetType == TargetType.Enemy then
+        assert(self:isEnemy(target), "Target is not enemy")
+    elseif spell.targetType == TargetType.Area then
+        assert(location, "No location for area spell")
+    elseif spell.targetType == TargetType.Party then
+        assert(self:isFriendly(target), "Target is not friendly")
+        --TODO: check party
+    elseif spell.targetType == TargetType.Any then
+        assert(target, "No target for any spell")
+    else
+        error("Unknown target type " .. tostring(spell.targetType))
+    end
+
     ({
         [CastType.Instant] = ResourceUnit.instantCast,
         [CastType.Channeled] = ResourceUnit.channelCast,
         [CastType.Casting]    = ResourceUnit.hardCast,
         [CastType.Passive] = ResourceUnit.passiveCast,
-    })[casttype](self, spell)
+    })[casttype](self, spell, target, location)
+
+    --Dont query auras if cast fails or errors
+    for _, aura in ipairs(queriedAuras) do
+        aura.aura.onQuery(aura.aura, self, spell, target, location)
+    end
+
+    return true
 end
 
 ResourceUnit.wantToCast = function(self, spell) --On user input, on npc logic
-    self:cast(spell)
+    local canCast, reason = self:canCast(spell)
+    if not canCast then
+        return false, reason
+    end
+
+    return self:cast(spell)
 end
 
 ResourceUnit.takeDamage = function(self, damage, school, sourceUnit)

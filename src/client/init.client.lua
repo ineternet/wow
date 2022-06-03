@@ -39,10 +39,16 @@ local function rawtostring(t)
 
 local pblast = game:GetService("ReplicatedFirst").Pyroblast:Clone()
 local char, enemy
+local hit = 0
 local RunService = game:GetService("RunService")
 RunService.Heartbeat:Connect(function(dt)
     --char:downstream()
     --enemy:downstream()
+
+    if hit == 1 then
+        
+    end
+
     if not char then
         return end
 
@@ -91,7 +97,26 @@ RunService.Heartbeat:Connect(function(dt)
     pblast.Parent = nil
     for i, aura in ipairs(enemy.auras) do
         if aura.aura.name == "Pyroblast" then
+            hit = hit + 1
             pblast.Parent = enemyframe.Auras
+        end
+    end
+
+    local acon = charframe.Spellbook
+    for _, v in ipairs(acon:GetChildren()) do
+        if v:IsA("GuiObject") then
+            v:Destroy()
+        end
+    end
+    local astencil = game.ReplicatedFirst.AuraText
+    --print(char.auras)
+    local printauras = math.random() > 0.99
+    for i, aura in ipairs(char.auras) do
+        local a = astencil:Clone()
+        a.Text = aura.aura.name
+        a.Parent = acon
+        if printauras then
+            print(aura.aura.name)
         end
     end
 end)
@@ -142,15 +167,18 @@ game:GetService("UserInputService").InputBegan:Connect(function(io, gpc)
         return
     end
     if io.UserInputType == Enum.UserInputType.Keyboard then
-        if io.KeyCode == Enum.KeyCode.Two then
+        if io.KeyCode == Enum.KeyCode.One then
+            --Fireball
+            env.Remote:FireServer(env.Request.CastSpell, env.Spells.Fireball.id)
+        elseif io.KeyCode == Enum.KeyCode.Two then
             --Fire blast
             env.Remote:FireServer(env.Request.CastSpell, env.Spells.FireBlast.id)
         elseif io.KeyCode == Enum.KeyCode.Three then
             --Pyroblast
             env.Remote:FireServer(env.Request.CastSpell, env.Spells.Pyroblast.id)
         elseif io.KeyCode == Enum.KeyCode.Four then
-            --Pyroblast
-            env.Remote:FireServer(env.Request.CastSpell, env.Spells.ApplyDummyAura.id)
+            --Arcane Intellect
+            env.Remote:FireServer(env.Request.CastSpell, env.Spells.ArcaneIntellect.id)
         end
     end
 end)

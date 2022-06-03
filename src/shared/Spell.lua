@@ -20,16 +20,29 @@ Spell.SchoolDamage = function(castingUnit, spellTarget, damage, school, pvpModif
     end
     spellTarget:takeDamage(damage, school)
 
-    --Spellbook triggers
-    if crit then
-        castingUnit.spellbook:onSpellCritical(castingUnit, spell, spellTarget, spellLocation)
+    return {
+        crit = crit,
+        isPvp = isPvp,
+        finalDamage = damage
+    }
+    
+end
+
+local function effectOnTargetModel(args)
+    return function(_, _, spellTarget, _)
+        args.effect(workspace.Dummy)
     end
 end
+
 local function schoolDamage(args)
     return function(spell, castingUnit, spellTarget, _)
         local damage = args.damage(castingUnit, castingUnit.charsheet)
         local school = args.school
-        Spell.SchoolDamage(castingUnit, spellTarget, damage, school, args.pvp, args.forceCrit)
+        local result = Spell.SchoolDamage(castingUnit, spellTarget, damage, school, args.pvp, args.forceCrit)
+    
+        if result.crit then
+            castingUnit.spellbook:onSpellCritical(castingUnit, spell, spellTarget, _)
+        end
     end
 end
 
@@ -47,6 +60,7 @@ end
 
 local function applyAura(args)
     return function(spell, castingUnit, spellTarget, _)
+        print("Applying aura")
         local auraInstance = args.aura:createInstance()
         for k, v in pairs(args.auraData or {}) do
             auraInstance[k] = v
@@ -55,113 +69,120 @@ local function applyAura(args)
         print("Applying aura to", spellTarget, "for", args.auraData.duration)
         --table.insert(spellTarget.auras, auraInstance)
         replicatedInsert(spellTarget.auras, auraInstance)
+        print(spellTarget.auras.noproxy)
     end
+end
+
+Spell.RemoveAura = function(fromUnit, aura, dispelMode, specificAmount)
+    if not dispelMode then
+        dispelMode = DispelMode.All
+    end
+    if dispelMode == DispelMode.None then
+        return
+    end
+
+    print("Attempting to remove aura", aura, "from", fromUnit)
+
+    local markedForRemoval = {}
+    local amountMarked = 0
+    local latestTime = 0
+    local latestAura = nil
+    for i, auraInstance in ipairs(fromUnit.auras.noproxy) do
+        if auraInstance.aura.id == aura.id then
+            if dispelMode ~= DispelMode.Latest then
+                markedForRemoval[i] = true
+            else
+                if auraInstance.appliedAt > latestTime then
+                    latestTime = auraInstance.appliedAt
+                    latestAura = i
+                end
+            end
+            if dispelMode == DispelMode.First then
+                break
+            elseif dispelMode == DispelMode.All then
+                --Do nothing
+            elseif dispelMode == DispelMode.SpecificAmount then
+                if #markedForRemoval >= specificAmount then
+                    break
+                end
+            end
+        end
+    end
+    if latestAura then
+        markedForRemoval[latestAura] = true
+    end
+
+    print("Marked for removal:", markedForRemoval)
+
+    local shift = 0
+    local fTop = #fromUnit.auras.noproxy
+    for i = 1, fTop+1 do
+        if markedForRemoval[i-1] then
+            shift = shift + 1
+        end
+        if shift > 0 then
+            fromUnit.auras[i-shift] = fromUnit.auras[i]
+        end
+    end
+    for i = fTop-shift+1, fTop do
+        fromUnit.auras[i] = nil
+    end --TODO: May need to finalize each aura to clear connections
 end
 
 local function removeAura(args)
     return function(spell, castingUnit, spellTarget, _)
-        local dispelMode = args.dispelMode
-        if not dispelMode then
-            dispelMode = DispelMode.All
-        end
-        if dispelMode == DispelMode.None then
-            return
-        end
-
-        local markedForRemoval = {}
-        local amountMarked = 0
-        local latestTime = 0
-        local latestAura = nil
-        for i, auraInstance in ipairs(spellTarget.auras) do
-            if auraInstance.aura == args.aura then
-                if dispelMode ~= DispelMode.Latest then
-                    markedForRemoval[i] = true
-                else
-                    if auraInstance.appliedAt > latestTime then
-                        latestTime = auraInstance.appliedAt
-                        latestAura = i
-                    end
-                end
-                if dispelMode == DispelMode.First then
-                    break
-                elseif dispelMode == DispelMode.All then
-                    --Do nothing
-                elseif dispelMode == DispelMode.SpecificAmount then
-                    if #markedForRemoval >= args.amount then
-                        break
-                    end
-                end
-            end
-        end
-        if latestAura then
-            markedForRemoval[latestAura] = true
-        end
-
-        local shift = 0
-        local fTop = #spellTarget.auras
-        for i = 1, fTop do
-            if markedForRemoval[i-1] then
-                shift = shift + 1
-            end
-            if shift > 0 then
-                spellTarget.auras[i-shift] = spellTarget.auras[i]
-            end
-        end
-        for i = fTop-shift+1, fTop do
-            spellTarget.auras[i] = nil
-        end --TODO: May need to finalize each aura to clear connections
+        Spell.RemoveAura(spellTarget, args.aura, args.dispelMode)
     end
 end
+
+
 
 local function projectile(args)
     return function(spell, castingUnit, spellTarget, spellLocation)
         print("Blocking for 1 second to simulate projectile travel time.")
-        task.wait(1)
+        local fb = game.Lighting.Part:Clone()
+        local start = game.Players:GetPlayers()[1].Character.HumanoidRootPart.Position
+        local goal = workspace.Dummy.Torso.Position
+        fb.Parent = workspace
+        fb.Anchored = false
+        fb.CFrame = CFrame.new(start, goal)
+        fb:SetNetworkOwner(game.Players:GetPlayers()[1])
+        local spd = 0.5
+        --fb.AlignOrientation
+        fb.Velocity = (goal - start) / spd
+        task.wait(spd)
+        local fn = args.onArriveWorldModel
+        if fn then
+            fn(workspace.Dummy)
+        end
+        fb.Anchored = true
+        fb.Transparency = 1
+        task.delay(2, function()
+            fb:Destroy()
+        end)
     end
 end
 
 local function multi(args) --Wrap multiple effects in a single function, preserving order
     return function(...)
+        print("Multicasting with args", ...)
         for i, v in ipairs(args) do
             v(...)
         end
     end
 end
 
---[[
-    
-        effects = {
-            ifHasAura(Auras.HeatingUp) {
-                dropFollowingEffects = true,
-                multi {
-                    removeAura {
-                        aura = Auras.HeatingUp,
-                        dispelMode = DispelMode.All,
-                    },
-                    applyAura {
-                        aura = Auras.HotStreak,
-                        auraData = {
-                            duration = 10,
-                        },
-                    },
-            },
-            applyAura {
-                aura = Auras.HeatingUp,
-                auraData = {
-                    duration = 10,
-                },
-            },
-        }
-]]
-
 local function ifHasAura(aura)
     return function(args)
         return function(spell, castingUnit, spellTarget, spellLocation)
             local effect = args.effect
-            local compoundReturn = args.dropFollowingEffects
+            local compoundReturn = false
 
+            --print(castingUnit.auras.noproxy)
             if castingUnit:hasAura(aura) then
-                compoundReturn = compoundReturn or effect(spell, castingUnit, spellTarget, spellLocation)
+                print("Has aura")
+                compoundReturn = args.dropFollowingEffects
+                compoundReturn = effect(spell, castingUnit, spellTarget, spellLocation) or compoundReturn
             end
 
             return compoundReturn
@@ -169,9 +190,50 @@ local function ifHasAura(aura)
     end
 end
 
+local function onEach(args)
+    return function(spell, castingUnit, spellTarget, spellLocation)
+        local collector = args.collector
+        local effect = args.effect
+        local compoundReturn = args.dropFollowingEffects
+
+        local targets = collector(spell, castingUnit, spellTarget, spellLocation)
+        for _, pt in ipairs(targets) do
+            for order, v in ipairs(effect) do
+                compoundReturn = v(spell, castingUnit, pt, spellLocation) or compoundReturn
+            end
+        end
+
+        return compoundReturn
+    end
+end
+
+local collectors = {
+    SamePartyElseTargetOnly = function(_, castingUnit, spellTarget, _)
+        assertObj(spellTarget)
+        if not castingUnit or not spellTarget:is"PlayerUnit" or not castingUnit.is or not castingUnit:is"PlayerUnit" then
+            --Automatically fail if target is not a player or if caster is not a player (can not be in parties)
+            --Continue to end of function
+        elseif castingUnit.is and castingUnit:is("PlayerUnit") then
+            if castingUnit.party and spellTarget.party and castingUnit.party == spellTarget.party then
+                return castingUnit.party.units.noproxy
+            end
+        end
+        return {spellTarget}
+    end
+}
+
 local logicalIncrement = 0
 Spell.new = Constructor(Spell, {
+    icon = "rbxassetid://1337",
 
+    cooldown = 0,
+    gcd = GCD.None,
+
+    castType = CastType.Instant,
+    targetType = TargetType.Self,
+    range = Range.Unlimited,
+
+    school = Schools.Physical,
 }, function(self)
     --Automatically assign id to have a common reference point sides
     logicalIncrement = logicalIncrement + 1
@@ -222,10 +284,13 @@ Spells.FireBlast:assign({
 
     school = Schools.Fire,
     effects = {
+        effectOnTargetModel {
+            effect = Effects.Combust,
+        },
         schoolDamage {
             school = Schools.Fire,
             damage = function(caster, sheet)
-                return 1 * sheet:spellPower(caster)
+                return 0.4 * sheet:spellPower(caster)
             end,
             forceCrit = true,
             pvp = 0.8
@@ -287,10 +352,10 @@ Spells.HotStreak:assign({
 
     school = Schools.Physical,
     effects = {
-        ifHasAura(Auras.HeatingUp) {
+        ifHasAura(Auras.HeatingUp) { --If already Heating Up, apply Hot Streak
             dropFollowingEffects = true,
             effect = multi {
-                removeAura {
+                removeAura { --Remove Heating Up
                     aura = Auras.HeatingUp,
                     dispelMode = DispelMode.All,
                 },
@@ -302,7 +367,7 @@ Spells.HotStreak:assign({
                 },
             }
         },
-        applyAura {
+        applyAura { --If not Heating Up, apply Heating Up
             aura = Auras.HeatingUp,
             auraData = {
                 duration = 10,
@@ -342,6 +407,7 @@ Spells.Pyroblast:assign({
             arriveWithin = 0.3,
             type = Projectiles.Fireball,
             size = 2,
+            onArriveWorldModel = Effects.Combust
         },
         schoolDamage {
             school = Schools.Fire,
@@ -360,6 +426,45 @@ Spells.Pyroblast:assign({
         },
     },
 
+})
+
+Spells.ArcaneIntellect = Spell.new()
+Spells.ArcaneIntellect:assign({
+    name = "Arcane Intellect",
+    tooltip = function(sheet)
+        local str = "Increases the Intellect of an ally by %s%% for 60 minutes."
+        str = str .. "\n\n" .. "If cast on a party member, everyone in the party gains the same bonus."
+        return str
+    end,
+    icon = "rbxassetid://1337",
+
+    resource = Resources.Mana,
+    resourceCost = 0.04,
+
+    cooldown = 0,
+    gcd = GCD.Default,
+
+    castType = CastType.Instant,
+    targetType = TargetType.Friendly,
+    range = Range.Long,
+
+    school = Schools.Arcane,
+    effects = {
+        onEach {
+            collector = collectors.SamePartyElseTargetOnly,
+            effect = {
+                effectOnTargetModel {
+                    effect = Effects.ArcaneIntellect,
+                },
+                applyAura {
+                    aura = Auras.ArcaneIntellect,
+                    auraData = {
+                        duration = 60 * 60,
+                    },
+                },
+            },
+        },
+    },
 })
 
 Spells.Flamestrike = Spell.new()
@@ -505,5 +610,6 @@ Spells.FlashOfLight:assign({
         },
     },
 })
+
 
 return Spell

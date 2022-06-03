@@ -20,6 +20,8 @@ char:updateClassResources()
 char.primaryResourceAmount = char.primaryResourceMaximum
 char.secondaryResourceAmount = char.secondaryResourceMaximum
 
+char.spellbook:learn(const.Spells.HotStreak)
+
 local stamdagger = items.newOf(const.Items.StamDagger)
 
 local _ = char.charsheet.equipment:swap(const.Slots.MainHand, stamdagger)

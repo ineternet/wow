@@ -30,12 +30,18 @@ Spellbook.hasSpell = function(self, spell)
 end
 
 Spellbook.onSpellCritical = function(self, unit, spell, spellTarget, spellLocation) --Fired when spell damage is a critical hit.
+    
     --Fire Mage: Proc Hot Streak on fire crits
+    print("Critted")
     if self:hasSpell(Spells.HotStreak) then
-        if spell.school == Schools.Fire then
-            unit:cast(Spells.HotStreak)
+        print"Streak learned"
+        if spell.school and spell.school == Schools.Fire then
+            print"Fire school"
+            unit:cast(Spells.HotStreak, unit)
         end
     end
+
+    
 end
 
 return Spellbook

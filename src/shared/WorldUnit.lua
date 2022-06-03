@@ -10,4 +10,15 @@ WorldUnit.new = Constructor(WorldUnit, {
     
 })
 
+WorldUnit.distanceFrom = function(self, point)
+    --TODO: decide if elevation should be included
+    
+    local roomDistance = true
+    if roomDistance then
+        return (self.location - point).Magnitude
+    else --plane distance
+        return Vector3.new(self.location.X - point.X, 0, self.location.Z - point.Z).Magnitude
+    end
+end
+
 return WorldUnit

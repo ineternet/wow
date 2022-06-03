@@ -1,5 +1,7 @@
 local const, DefaultItemValues
 
+local void = function() end
+
 local function item(idef)
     for k, v in pairs(DefaultItemValues) do
         idef[k] = idef[k] or v
@@ -209,6 +211,7 @@ const = {
                 weaponSpeed = 1.4,
                 weaponDamage = 4,
                 --haste = 300,
+                --crit = 300,
             }
         }
     }, {
@@ -360,8 +363,12 @@ const = {
     Range = { --Spell ranges in yards
         Self = 0, --Self spells have no range
         Combat = 5, --Melee range
+        ChargeMin = 8, --Minimum range for gap closer spells
+        CombatExtended = 15, --Extended melee range
+        Charge = 25, --Melee gap closer range
         Short = 30,  --Reduced cast range
         Long = 40, --Default full cast range
+        Unlimited = math.huge, --Unlimited range
     },
     NoResourceRegeneration = function() --Reuseable function for disabling resource regeneration
         return 0
@@ -379,6 +386,22 @@ const = {
         Latest = 2, --Only the latest aura is dispelled.
         All = 3, --All auras are dispelled.
         SpecificAmount = 4, --Only a specific amount of auras are dispelled. The amount is specified in "dispelAmount".
+    },
+    AuraType = bidirectional { --How auras are shown
+        InternalBuff = 2, --Aura is shown as a buff, but is not cancellable
+        Buff = 1, --Aura is shown as a buff and can be cancelled with right click
+        Hidden = 0, --Aura is never shown
+        Debuff = 3, --Aura is shown as a debuff
+    },
+    AuraDecayType = bidirectional { --May indicate that an aura could possibly disappear
+        None = 0, --Aura stays until removed
+
+        --Aura will disappear after a set amount of time.
+        --An aura instance of this type must have these fields set:
+        -- - duration (How long the aura will last)
+        -- - elapsedPart (How much of the duration has elapsed, as a percentage)
+        --These fields may not be present if the aura has just been applied.
+        Timed = 1,
     },
     Request = bidirectional {
         Generic = 0, --Any request not specified below
@@ -449,6 +472,21 @@ const.GCDTimeout = { --How long each GCD is
     [const.GCD.Reduced] = 1,
 }
 
+const.ResourceNames = { --The names of the resources
+    [const.Resources.None] = "None",
+    [const.Resources.Mana] = "Mana",
+    [const.Resources.Health] = "Health",
+    [const.Resources.Fury] = "Fury",
+    [const.Resources.Focus] = "Focus",
+    [const.Resources.Energy] = "Energy",
+    [const.Resources.Corruption] = "Corruption",
+    [const.Resources.Icicles] = "Icicles",
+    [const.Resources.Favors] = "Favors",
+    [const.Resources.FelEnergy] = "Fel Energy",
+    [const.Resources.SoulFragments] = "Soul Fragments",
+    [const.Resources.ComboPoints] = "Combo Points",
+}
+
 local confirmedNonExistingSpells = {} --Spells that are confirmed to not exist as not to spam warnings
 const.Spells = setmetatable({
 
@@ -505,7 +543,38 @@ const.Auras = setmetatable({
             end
         end
         return rg
-    end
+    end,
+    __newindex = function(t, k, v)
+        --Assign ID when adding new spell
+        rawset(t, v.id, v)
+        --Assign index when adding new spell
+        rawset(v, "index", k)
+        --default behavior
+        rawset(t, k, v)
+    end,
+})
+
+local confirmedNonExistingEffects = {} --Effects that are confirmed to not exist as not to spam warnings
+const.Effects = setmetatable({
+
+}, {
+    __index = function(t, k)
+        local rg = rawget(t, k)
+        if not rg then
+            if not confirmedNonExistingEffects[k] then
+                require(script.Parent.Effects)
+                rg = rawget(t, k)
+                if not rg then
+                    confirmedNonExistingEffects[k] = true
+                    warn("Error: Effect with index " .. k .. " does not exist. Returning empty effect in the future.")
+                    return void
+                end
+            else
+                rg = void
+            end
+        end
+        return rg
+    end,
 })
 
 return const

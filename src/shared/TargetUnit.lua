@@ -17,19 +17,36 @@ TargetUnit.new = Constructor(TargetUnit, {
 end)
 
 TargetUnit.hasAura = function(self, auradef)
-    for i, aura in ipairs(self.auras) do
-        if aura.aura == auradef and not aura.invalidate then
+    print("CHECKING FOR AURA", auradef)
+    print(self.auras)
+    print(self.auras.noproxy)
+    for i, aura in ipairs(self.auras.noproxy) do
+        print("Checking if aura", aura.aura.name, "is", auradef.name)
+        if aura.aura.id == auradef.id and not aura.invalidate then
+            print"it is"
             return true
         end
     end
     return false
 end
 
+TargetUnit.isFriendly = function(self, unit)
+    return unit.target == self
+end
+
+TargetUnit.isEnemy = function(self, unit)
+    return not self:isFriendly(unit)
+end
+
 TargetUnit.tick = function(self, deltaTime)
     local toRemove = {}
     local triggerRemove = false
     local auras = self.auras.noproxy
+    local printauras = math.random() > 0.99
     for i, aura in ipairs(auras) do
+        if printauras then
+            print("Server has aura:", aura.aura.name)
+        end
         --TODO: noproxy generates a clone, so we can use it for iterating,
         --but not for mutation. Either make a unified iterator or dont clone in noproxy
         local aura = self.auras[i]
