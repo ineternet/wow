@@ -6,4 +6,8 @@ Unit.new = Constructor(Unit, {
     
 })
 
+Unit.tick = function(self, deltaTime)
+    self.dirty = true
+end
+
 return Unit

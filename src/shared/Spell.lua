@@ -58,18 +58,70 @@ local function area(args)
     end
 end
 
+Spell.ApplyAura = function(toUnit, aura, causer, auraData)
+
+    local overrideBehavior = auraData.override or aura.override or AuraOverrideBehavior.Ignore
+
+    local overrides = {
+        doNotCreateNewAura = false,
+        updateOldAura = false,
+        oldAura = nil,
+        duration = nil
+    }
+    if overrideBehavior == AuraOverrideBehavior.Ignore then
+        --Do nothing
+    elseif overrideBehavior == AuraOverrideBehavior.ClearOldApplyNew then
+        Spell.RemoveAura(toUnit, aura, DispelMode.All)
+    elseif overrideBehavior == AuraOverrideBehavior.UpdateOldDuration then
+        overrides.doNotCreateNewAura = true
+        overrides.updateOldAura = true
+        overrides.oldAura = toUnit:findFirstAura(aura)
+    elseif overrideBehavior == AuraOverrideBehavior.Pandemic then
+        local old = toUnit:findFirstAura(aura)
+        local pandemicDuration = math.clamp(
+            old and old:remainingTime() or 0, --If there is an old aura, apply its remaining time
+            0,
+            auraData.duration * 0.3 --up to 30% of the base duration.
+        )
+        overrides.duration = auraData.duration + pandemicDuration
+    elseif overrideBehavior == AuraOverrideBehavior.Stack then
+        --TODO: Implement stacking when necessary
+        error("Stacking auras not implemented")
+    elseif overrideBehavior == AuraOverrideBehavior.StackDontUpdate then
+        error("Stacking auras not implemented")
+    elseif overrideBehavior == AuraOverrideBehavior.DropThisApplication then
+        if toUnit:hasAura(aura) then
+            return
+        end
+    end
+
+    local auraInstance
+    if not overrides.doNotCreateNewAura then
+        auraInstance = aura:createInstance()
+    end
+
+    for _, auraInstance in pairs({
+        overrides.doNotCreateNewAura and nil or auraInstance,
+        overrides.updateOldAura and overrides.oldAura or nil,
+    }) do
+        for k, v in pairs(auraData or {}) do
+            if overrides[k] then
+                auraInstance[k] = overrides[k]
+            else
+                auraInstance[k] = v
+            end
+        end
+        auraInstance.causer = ref(causer)
+    end
+
+    if auraInstance then
+        replicatedInsert(toUnit.auras, auraInstance)
+    end
+end
+
 local function applyAura(args)
     return function(spell, castingUnit, spellTarget, _)
-        print("Applying aura")
-        local auraInstance = args.aura:createInstance()
-        for k, v in pairs(args.auraData or {}) do
-            auraInstance[k] = v
-        end
-        auraInstance.causer = ref(castingUnit)
-        print("Applying aura to", spellTarget, "for", args.auraData.duration)
-        --table.insert(spellTarget.auras, auraInstance)
-        replicatedInsert(spellTarget.auras, auraInstance)
-        print(spellTarget.auras.noproxy)
+        Spell.ApplyAura(spellTarget, args.aura, castingUnit, args.auraData)
     end
 end
 
@@ -352,6 +404,10 @@ Spells.HotStreak:assign({
 
     school = Schools.Physical,
     effects = {
+        ifHasAura(Auras.HotStreak) { --Do not do anything if already has aura
+            dropFollowingEffects = true,
+            effect = spellDummy(),
+        },
         ifHasAura(Auras.HeatingUp) { --If already Heating Up, apply Hot Streak
             dropFollowingEffects = true,
             effect = multi {
@@ -442,7 +498,7 @@ Spells.ArcaneIntellect:assign({
     resourceCost = 0.04,
 
     cooldown = 0,
-    gcd = GCD.Default,
+    gcd = GCD.Standard,
 
     castType = CastType.Instant,
     targetType = TargetType.Friendly,

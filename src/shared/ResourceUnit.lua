@@ -116,6 +116,7 @@ ResourceUnit.new = Constructor(ResourceUnit, {
     currentAction = Actions.Idle,
     actionBegin = utctime(),
     actionEnd = utctime(),
+    gcdEnd = utctime(),
     interruptCast = nil,
 
     lastAggressiveAction = utctime(),
@@ -268,11 +269,10 @@ ResourceUnit.instantCast = function(self, spell, spellTarget, spellLocation) --F
         self.currentAction = Actions.Idle --We immediately go to idle because the cast is instant
         self.actionBegin = utctime()
         self.actionEnd = utctime() --Duh
-        self.gcdEnd = thisSpellGcdEnd
         self.lastSpell = ref(spell)
-    else --Still update GCD if the old GCD would end too early.
-        self.gcdEnd = math.max(self.gcdEnd, thisSpellGcdEnd)
     end
+    self.gcdEnd = math.max(self.gcdEnd, thisSpellGcdEnd) --If the old GCD would have ended later, preserve it
+    print("New gcd end is", self.gcdEnd - utctime(), "seconds from now.")
 
     if spell.resourceCost then
         self:deltaResourceAmount(spell.resource, -self:resolveRaw(spell.resource, spell.resourceCost))
@@ -312,6 +312,7 @@ ResourceUnit.canCast = function(self, spell, target, location)
     -- 3 Check if we are in line of sight, if required
     -- 4 Check if we are facing the target, if applicable and required
     -- 5 Check if global cooldown is up, or if we are casting a spell that doesn't have a GCD
+    -- 6 Check if we are in a busy action, or if we are casting a spell that doesn't interrupt
 
     --1
     if spell.resourceCost then
@@ -323,14 +324,53 @@ ResourceUnit.canCast = function(self, spell, target, location)
     end
 
     --2
-    if spell.range then
+    if target and (spell.range or 0) > 0 then
         local distance = target:distanceFrom(self.location)
         if distance > spell.range then
-            return false, "Target out of range"
+            return false, "Out of range"
         end
     end
 
+    --3
+    local defaultLosRule = (LosRules)[spell.targetType or TargetType.Self]
+    local shouldCheckLos = (spell.losRequired == nil) and defaultLosRule or spell.losRequired
+    if target and shouldCheckLos then
+        if not self:los(target) then
+            return false, "Target not in line of sight"
+        end
+    end
 
+    --4
+    local defaultFacingRule = (FacingRules)[spell.targetType or TargetType.Self]
+    local shouldCheckFacing = (spell.facingRequired == nil) and defaultFacingRule or spell.facingRequired
+    if target and shouldCheckFacing then
+        local facing = self:facing(target)
+        if not facing then
+            return false, "Facing in the wrong direction"
+        end
+    end
+
+    --5
+    if self.gcdEnd and utctime() < self.gcdEnd then
+        return false, "Not ready yet"
+    end
+
+    --6
+    if self.currentAction ~= Actions.Idle --Can override idle
+    and self.currentAction ~= Actions.Swing then --Can override swinging (some spells will stop this)
+        if self.currentAction == Actions.Dead then
+            return false, "You are dead..."
+        end
+
+        --Spells can be overriden, for now
+        --The exact mechanic is resolved by the cast function
+        --[[if not spell.castableWhileCasting(self) then
+            return false, "Busy"
+        end]]
+    end
+
+
+    return true, ""
 end
 
 ResourceUnit.cast = function(self, spell, target, location)
@@ -340,7 +380,6 @@ ResourceUnit.cast = function(self, spell, target, location)
     local target = target or self.target
     local location = location or self.location
 
-    local queriedAuras = {}
     --Check for cast type modifiers from auras
     --For example some passive procs will cause auras that turn some spells into instant casts.
     for _, aura in ipairs(self.auras.noproxy) do
@@ -349,7 +388,7 @@ ResourceUnit.cast = function(self, spell, target, location)
             if thisSpellMod then
                 casttype = thisSpellMod
                 if aura.aura.onQuery then
-                    table.insert(queriedAuras, aura)
+                    aura.aura.onQuery(aura, self, spell, target, location)
                 end
                 break
             end
@@ -386,21 +425,19 @@ ResourceUnit.cast = function(self, spell, target, location)
         [CastType.Passive] = ResourceUnit.passiveCast,
     })[casttype](self, spell, target, location)
 
-    --Dont query auras if cast fails or errors
-    for _, aura in ipairs(queriedAuras) do
-        aura.aura.onQuery(aura.aura, self, spell, target, location)
-    end
-
     return true
 end
 
 ResourceUnit.wantToCast = function(self, spell) --On user input, on npc logic
-    local canCast, reason = self:canCast(spell)
+    local target = target or self.target
+    local location = location or self.location
+
+    local canCast, reason = self:canCast(spell, target, location)
     if not canCast then
         return false, reason
     end
 
-    return self:cast(spell)
+    return self:cast(spell, target, location), ""
 end
 
 ResourceUnit.takeDamage = function(self, damage, school, sourceUnit)
@@ -428,7 +465,7 @@ end
 
 ResourceUnit.tick = function(self, deltaTime)
     self:regenTick(deltaTime, self:isInCombat())
-    self.super.tick(self, deltaTime)
+    ResourceUnit.super.tick(self, deltaTime)
 end
 
 ResourceUnit.regenTick = function(self, timeSinceLastTick, inCombat)

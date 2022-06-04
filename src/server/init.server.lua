@@ -64,14 +64,17 @@ game:GetService("Players").PlayerAdded:Connect(function(p)
 
     print("Updating enemy to force update.")
     --enemy.charsheet.level = enemy.charsheet.level + 1
-    enemy.display = "This Enemy"
+    enemy.display = "Targeted Enemy"
 end)
 
 env.Remote.OnServerEvent:Connect(function(plr, action, arg)
     if action == env.Request.CastSpell then
         local spell = env.Spells[arg]
         print("Attempting to cast spell " .. spell.name)
-        char:wantToCast(spell)
+        local suc, msg = char:wantToCast(spell)
+        if not suc then
+            print("Failed to cast spell: " .. msg)
+        end
     end
 end)
 

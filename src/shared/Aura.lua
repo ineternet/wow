@@ -55,6 +55,13 @@ AuraInstance.tick = function(self, deltaTime, owner)
     self.elapsedPart = self.elapsedPart + (deltaTime / self.duration) * hasted
 end
 
+AuraInstance.remainingTime = function(self)
+    if not self.duration then --We assume unset duration means the aura is permanent
+        return math.huge
+    end
+    return self.duration * (1 - self.elapsedPart)
+end
+
 Aura.createInstance = function(self)
     local aura = AuraInstance.new()
     aura.aura = self
@@ -93,6 +100,7 @@ Auras.MortalWounds:assign({
     onIncomingHeal = function(aura, refHeal)
         refHeal.amount = refHeal.amount * 0.5
     end,
+    override = AuraOverrideBehavior.ClearOldApplyNew,
 })
 
 Auras.PyroblastDot = Aura.new()
@@ -111,6 +119,7 @@ Auras.PyroblastDot:assign({
     decayType = AuraDecayType.Timed,
     affectedByCauserHaste = true,
     --baseTicks = 8,
+    override = AuraOverrideBehavior.Pandemic,
 })
 
 Auras.ArcaneIntellect = Aura.new()
@@ -127,6 +136,7 @@ Auras.ArcaneIntellect:assign({
     effectType = AuraDispelType.Magic,
     auraType = AuraType.Buff,
     decayType = AuraDecayType.Timed,
+    override = AuraOverrideBehavior.ClearOldApplyNew,
 })
 
 Auras.Dummy = Aura.new()
@@ -154,6 +164,7 @@ Auras.FlamestrikeSlow:assign({
     effectType = AuraDispelType.Magic,
     auraType = AuraType.Debuff,
     decayType = AuraDecayType.Timed,
+    override = AuraOverrideBehavior.Pandemic,
 })
 
 Auras.HeatingUp = Aura.new()
@@ -167,6 +178,7 @@ Auras.HeatingUp:assign({
     effectType = AuraDispelType.None,
     auraType = AuraType.InternalBuff,
     decayType = AuraDecayType.Timed,
+    override = AuraOverrideBehavior.Ignore, --Handled by Spellbook
 })
 
 Auras.HotStreak = Aura.new()
@@ -185,6 +197,7 @@ Auras.HotStreak:assign({
     effectType = AuraDispelType.None,
     auraType = AuraType.InternalBuff,
     decayType = AuraDecayType.Timed,
+    override = AuraOverrideBehavior.Ignore, --Handled by Spellbook
 })
 
 Auras.BearForm = Aura.new()
@@ -203,6 +216,7 @@ Auras.BearForm:assign({
     effectType = AuraDispelType.None,
     auraType = AuraType.InternalBuff,
     decayType = AuraDecayType.None,
+    override = AuraOverrideBehavior.DropThisApplication,
 })
 
 return Aura

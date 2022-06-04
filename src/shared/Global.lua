@@ -118,9 +118,9 @@ Global.__MakeObject = function(ofType) --Create object. EVERY created object cal
     newobj.eventConnections = {}
     setmetatable(newobj, {
         __index = ofType,
-        --__tostring = function(t)
-        --    return ("(%s@%s)"):format(t.type, t.ref)
-        --end
+        __tostring = function(t)
+            return ("(%s@%s)"):format(t.type, t.ref)
+        end
     })
     local proxy = { dirtyKeys = {}, dirty = false }
     setmetatable(proxy, {
@@ -165,10 +165,36 @@ Global.__MakeObject = function(ofType) --Create object. EVERY created object cal
     return proxy
 end
 
+local function setRefMt(obj)
+    return setmetatable({ ref = obj.ref, type = obj.type }, {
+        __index = function(t, k)
+            if k == "__isRef" then
+                return true
+            end
+            local obj = Global.__FindByReference(t.ref)
+            if obj then
+                return obj[k]
+            end
+        end,
+        __newindex = function(t, k, v)
+            local obj = Global.__FindByReference(t.ref)
+            if obj then
+                obj[k] = v
+            end
+        end,
+    })
+end
+
 Global.UpdateFromDelta = function(ref, obj)
     local existObj = objectIndex[ref]
     if existObj then
         for k, v in pairs(obj) do
+            if type(v) == "table" and not v.ref then
+                --Create Ref MT for container types
+                for i, containedObject in ipairs(v) do
+                    v[i] = setRefMt(containedObject)
+                end
+            end
             existObj[k] = v
         end
         return true
@@ -200,7 +226,7 @@ Global.Constructor = function(ofType, withValues, postConstructor)
                                     --Return base table + all child refs have to be noproxy
                                     local clone = {}
                                     for k, v in pairs(nt) do
-                                        if type(v) == "table" and v.dirty ~= nil then
+                                        if type(v) == "table" and rawget(v, "dirty") ~= nil then
                                             --Set metatable, this is required per side
                                             --clone[k] = setmetatable(v.noproxy, getmetatable(nt))
                                             clone[k] = v.noproxy
@@ -266,26 +292,6 @@ end
 
 Global.Remote = game:GetService("ReplicatedStorage"):WaitForChild("Replicate")
 Global.Retrieve = game:GetService("ReplicatedStorage"):WaitForChild("Retrieve")
-
-local function setRefMt(obj)
-    return setmetatable({ ref = obj.ref, type = obj.type }, {
-        __index = function(t, k)
-            if k == "__isRef" then
-                return true
-            end
-            local obj = Global.__FindByReference(t.ref)
-            if obj then
-                return obj[k]
-            end
-        end,
-        __newindex = function(t, k, v)
-            local obj = Global.__FindByReference(t.ref)
-            if obj then
-                obj[k] = v
-            end
-        end,
-    })
-end
 
 Global.ref = function(obj)
     assert(obj and type(obj) == "table" and obj.ref, "expected (Object), got " .. type(obj) .. " (missing 'ref')")

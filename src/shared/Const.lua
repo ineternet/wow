@@ -266,6 +266,15 @@ const = {
         MainHand = 11,
         OffHand = 12,
     },
+    AuraOverrideBehavior = {
+        Ignore = 0, --Multiple aura instances can coexist. Just apply the new aura.
+        ClearOldApplyNew = 1, --Remove all old auras and apply a new one.
+        UpdateOldDuration = 2, --Update the duration of the old aura to the new aura's duration.
+        Pandemic = 3, --Clear old aura, apply new aura, set new aura duration according to Pandemic rules.
+        Stack = 4, --Attempt to add a stack to the old aura and update its duration.
+        StackDontUpdate = 5, --Stack, but do not update the duration.
+        DropThisApplication = 6, --If an old aura is found, do not apply the new aura.
+    },
     Enchants = { --IDs are indices of this table (i.e. auto-increment)
         MinorStamina = enchant {
             mod = {
@@ -486,6 +495,39 @@ const.ResourceNames = { --The names of the resources
     [const.Resources.SoulFragments] = "Soul Fragments",
     [const.Resources.ComboPoints] = "Combo Points",
 }
+
+const.LosRules = {
+    [const.TargetType.Self] = false,
+    [const.TargetType.Enemy] = true,
+    [const.TargetType.Friendly] = true,
+    [const.TargetType.Any] = true,
+    [const.TargetType.Party] = true,
+    [const.TargetType.Area] = true,
+}
+
+const.FacingRules = {
+    [const.TargetType.Self] = false,
+    [const.TargetType.Enemy] = true,
+    [const.TargetType.Friendly] = false,
+    [const.TargetType.Any] = true,
+    [const.TargetType.Party] = false,
+    [const.TargetType.Area] = true,
+}
+
+const.AuraTimer = function(seconds)
+    --Return a string that represents the time in weeks, days, hours, minutes or seconds
+    if seconds < 60 then
+        return string.format("%ds", seconds)
+    elseif seconds < 3600 then
+        return string.format("%dm", seconds / 60)
+    elseif seconds < 86400 then
+        return string.format("%dh", seconds / 3600)
+    elseif seconds < 604800 then
+        return string.format("%dd", seconds / 86400)
+    else
+        return string.format("%dw", seconds / 604800)
+    end
+end
 
 local confirmedNonExistingSpells = {} --Spells that are confirmed to not exist as not to spam warnings
 const.Spells = setmetatable({

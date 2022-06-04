@@ -53,12 +53,21 @@ RunService.Heartbeat:Connect(function(dt)
         return end
 
 
-    local castRatio = (env.utctime() - char.actionBegin) / const.Spells.Pyroblast.castTime
-    castRatio = math.min(1, castRatio)
+    if char.lastSpell and char.lastSpell.castTime then
+        local castRatio = (env.utctime() - char.actionBegin) / char.lastSpell.castTime
+        castRatio = math.min(1, castRatio)
+        --print(char.currentAction)
+        local casting = char.currentAction == const.Actions.Cast
+        sg.Hud.CastBar.Visible = casting
+        sg.Hud.CastBar.Fill.Size = UDim2.new(castRatio, 0, 1, 0)
+    end
+
+    local gcdRatio = (1.5 - (char.gcdEnd - env.utctime())) / const.GCDTimeout[const.GCD.Standard]
+    gcdRatio = math.min(1, gcdRatio)
     --print(char.currentAction)
-    local casting = char.currentAction == const.Actions.Cast
-    sg.Hud.CastBar.Visible = casting
-    sg.Hud.CastBar.Fill.Size = UDim2.new(castRatio, 0, 1, 0)
+    local gcding = char.gcdEnd > env.utctime()
+    sg.Hud.GcdBar.Visible = gcding
+    sg.Hud.GcdBar.Fill.Size = UDim2.new(gcdRatio, 0, 1, 0)
 
     local pamount = char.primaryResourceAmount
     local pmax = char.primaryResourceMaximum
@@ -96,9 +105,11 @@ RunService.Heartbeat:Connect(function(dt)
     
     pblast.Parent = nil
     for i, aura in ipairs(enemy.auras) do
-        if aura.aura.name == "Pyroblast" then
-            hit = hit + 1
-            pblast.Parent = enemyframe.Auras
+        if aura.aura then --Unsure what causes this, but it seems to work fine if we just ignore it.
+            if aura.aura.name == "Pyroblast" then
+                hit = hit + 1
+                pblast.Parent = enemyframe.Auras
+            end
         end
     end
 
@@ -112,11 +123,12 @@ RunService.Heartbeat:Connect(function(dt)
     --print(char.auras)
     local printauras = math.random() > 0.99
     for i, aura in ipairs(char.auras) do
-        local a = astencil:Clone()
-        a.Text = aura.aura.name
-        a.Parent = acon
-        if printauras then
-            print(aura.aura.name)
+        if aura.aura then --Unsure what causes this, but it seems to work fine if we just ignore it.
+            local a = astencil:Clone()
+            a.Text = aura.aura.name .. " (" .. const.AuraTimer(
+            aura:remainingTime()
+        ) .. ")"
+            a.Parent = acon
         end
     end
 end)
@@ -134,7 +146,7 @@ env.Remote.OnClientEvent:Connect(function(action, obj)
                 --Object doesnt exist on this side.
                 --TODO: Create new object from new request
 
-                
+                --print("Delta obj", obj)
                 local cobj = env.__FindByReference(ref) --This will create the object
                 if not cobj then --Nil means another task is creating the object
                     return
