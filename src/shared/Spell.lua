@@ -227,12 +227,26 @@ end
 local function ifHasAura(aura)
     return function(args)
         return function(spell, castingUnit, spellTarget, spellLocation)
-            local effect = args.effect
+            local effect = args.effect or args[1]
             local compoundReturn = false
 
-            --print(castingUnit.auras.noproxy)
             if castingUnit:hasAura(aura) then
-                print("Has aura")
+                compoundReturn = args.dropFollowingEffects
+                compoundReturn = effect(spell, castingUnit, spellTarget, spellLocation) or compoundReturn
+            end
+
+            return compoundReturn
+        end
+    end
+end
+
+local function ifSpecAndLevel(spec, level)
+    return function(args)
+        return function(spell, castingUnit, spellTarget, spellLocation)
+            local effect = args.effect or args[1]
+            local compoundReturn = false
+
+            if castingUnit.sheet.spec == spec and castingUnit.sheet.level >= level then
                 compoundReturn = args.dropFollowingEffects
                 compoundReturn = effect(spell, castingUnit, spellTarget, spellLocation) or compoundReturn
             end
@@ -457,7 +471,6 @@ Spells.Pyroblast:assign({
     range = Range.Long,
 
     school = Schools.Fire,
-    --instantCastWhen = hasAura(Auras.HotStreak),
     effects = {
         projectile {
             arriveWithin = 0.3,
@@ -606,35 +619,6 @@ Spells.MortalStrike:assign({
         },
     },
 })
---[[
-Spells.WaterElemental = Spell.new()
-Spells.WaterElemental:assign({
-    name = "Water Elemental",
-    tooltip = function(sheet)
-        local str = "Summon a Water Elemental to fight for you."
-        return str
-    end,
-    icon = "rbxassetid://1337",
-
-    resource = Resources.Mana,
-    resourceCost = 0.01,
-
-    cooldown = 0,
-    gcd = GCD.Standard,
-
-    castType = CastType.Casting,
-    castTime = 2,
-    targetType = TargetType.Self,
-
-    school = Schools.Water,
-    effects = {
-        summon {
-            unit = Units.WaterElemental,
-            duration = 0,
-        },
-    },
-})
-]]
 
 Spells.FlashOfLight = Spell.new()
 Spells.FlashOfLight:assign({
@@ -663,6 +647,49 @@ Spells.FlashOfLight:assign({
             amount = function(caster, sheet)
                 return 2 * sheet:spellPower(caster)
             end
+        },
+    },
+})
+
+Spell.Corruption = Spell.new()
+Spell.Corruption:assign({
+    name = "Corruption",
+    tooltip = function(sheet)
+        local str = "Corrupts the target, causing "
+        if sheet.spec == Specs.Affliction and sheet.level >= 54 then
+            str = str .. "%s Shadow damage and an additional "
+        end
+        str = str .. "%s Shadow damage over %s seconds."
+        return str
+    end,
+    icon = "rbxassetid://1337",
+
+    resource = Resources.Mana,
+    resourceCost = 0.01,
+
+    cooldown = 0,
+    gcd = GCD.Standard,
+
+    castType = CastType.Casting,
+    castTime = 2,
+    targetType = TargetType.Enemy,
+    range = Range.Long,
+
+    school = Schools.Shadow,
+    effects = {
+        ifSpecAndLevel(Specs.Affliction, 54) {
+            schoolDamage {
+                school = Schools.Shadow,
+                damage = function(caster, sheet)
+                    return 0.14 * sheet:spellPower(caster)
+                end,
+            },
+        },
+        applyAura {
+            aura = Auras.Corruption,
+            auraData = {
+                duration = 14,
+            },
         },
     },
 })

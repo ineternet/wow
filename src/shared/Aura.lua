@@ -9,6 +9,12 @@ local function auraDummy(spell, castingUnit, spellTarget, spellLocation)
 
 end
 
+local function schoolDot(school)
+    return function(aura, deltaTime, owner, tickStrength)
+        use"Spell".SchoolDamage(aura.causer, owner, (aura.damage(aura.causer, aura.causer.charsheet) / aura.duration) * tickStrength, school, 1)
+    end
+end
+
 AuraInstance.tick = function(self, deltaTime, owner)
     if self.invalidate then
         return
@@ -34,7 +40,8 @@ AuraInstance.tick = function(self, deltaTime, owner)
     end
 
     if self.aura.onTick then
-        local ticks = self.duration --One tick per second
+        local tickTimeout = 1 --Seconds between ticks
+        local ticks = self.duration / tickTimeout
         if not self.remainingTicks then
             self.remainingTicks = ticks
         end
@@ -45,13 +52,10 @@ AuraInstance.tick = function(self, deltaTime, owner)
         end
         if self.elapsedPart >= nextLogicalTick then
             self.remainingTicks = self.remainingTicks - 1
-            print("Ticking aura now. Remaining ticks: " .. self.remainingTicks .. ", Partial tick: " .. partialTick, ", Elapsed since start: " .. (utctime() - self.appliedAt))
             self.aura.onTick(self, deltaTime, owner, partialTick)
         end
     end
 
-    --print(self)
-    --print("Added to part:", (deltaTime / self.duration) * hasted, "Haste modifier:", hasted)
     self.elapsedPart = self.elapsedPart + (deltaTime / self.duration) * hasted
 end
 
@@ -72,7 +76,6 @@ end
 local QueryHandler = {
     RemoveThisAura = function(dispelMode)
         return function(self, unit)
-            print"Aura queries"
             use"Spell".RemoveAura(unit, self.aura, dispelMode)
         end
     end
@@ -111,9 +114,7 @@ Auras.PyroblastDot:assign({
         return str
     end,
     icon = "rbxassetid://1337",
-    onTick = function(aura, deltaTime, owner, tickStrength)
-        use"Spell".SchoolDamage(aura.causer, owner, (aura.damage(aura.causer, aura.causer.charsheet) / aura.duration) * tickStrength, Schools.Fire, 1)
-    end,
+    onTick = schoolDot(Schools.Fire),
     effectType = AuraDispelType.Magic,
     auraType = AuraType.Debuff,
     decayType = AuraDecayType.Timed,
@@ -217,6 +218,22 @@ Auras.BearForm:assign({
     auraType = AuraType.InternalBuff,
     decayType = AuraDecayType.None,
     override = AuraOverrideBehavior.DropThisApplication,
+})
+
+Aura.Corruption = Aura.new()
+Aura.Corruption:assign({
+    name = "Corruption",
+    tooltip = function(sheet)
+        local str = "Suffering %s Shadow damage every %s."
+        return str
+    end,
+    onTick = schoolDot(Schools.Shadow),
+    icon = "rbxassetid://1337",
+    effectType = AuraDispelType.Magic,
+    auraType = AuraType.Debuff,
+    decayType = AuraDecayType.Timed,
+    override = AuraOverrideBehavior.Pandemic,
+    affectedByCauserHaste = true,
 })
 
 return Aura
