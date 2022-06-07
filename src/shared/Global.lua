@@ -19,6 +19,7 @@ local increment = 0 --TODO: Is there a better way to do this? Counterargument: h
 Global.UniqueRequestId = function()
     increment = increment + 1
     if increment > 1e100 then --Although this is highly unlikely
+---@diagnostic disable-next-line: undefined-global
         _, increment = math.modf(increment)
         increment = increment + 0.01 --gives us more numbers to work with
     end
@@ -64,32 +65,39 @@ Global.__FindByReference = function(ref)
     return obj
 end
 
-if isServer then
-    local toUpdateObjects = {}
-    game:GetService("RunService").Heartbeat:Connect(function()
-        local count = 0
-        for ref, obj in pairs(objectIndex) do
-            if obj.dirty then
-                local nt = {}
-                for _, dirtyKey in ipairs(obj.dirtyKeys) do
-                    if type(obj[dirtyKey]) == "table" and obj[dirtyKey].noproxy ~= nil then
-                        nt[dirtyKey] = obj[dirtyKey].noproxy
-                    else
-                        nt[dirtyKey] = obj[dirtyKey]
-                    end
-                end
-                toUpdateObjects[ref] = nt
-                count = count + 1
-                obj.dirty = false
-                obj.dirtyKeys = {}
-            end
-        end
+local otherHeartbeatConnections = {}
+local toUpdateObjects = {}
+local function handleHeartbeat(dt)
+    for _, ohc in pairs(otherHeartbeatConnections) do
+        ohc(dt)
+    end
 
-        if count > 0 then
-            Global.Remote:FireAllClients(Request.FullObjectDelta, toUpdateObjects)
-            toUpdateObjects = {}
+    local count = 0
+    for ref, obj in pairs(objectIndex) do
+        if obj.dirty then
+            local nt = {}
+            for _, dirtyKey in ipairs(obj.dirtyKeys) do
+                if type(obj[dirtyKey]) == "table" and obj[dirtyKey].noproxy ~= nil then
+                    nt[dirtyKey] = obj[dirtyKey].noproxy
+                else
+                    nt[dirtyKey] = obj[dirtyKey]
+                end
+            end
+            toUpdateObjects[ref] = nt
+            count = count + 1
+            obj.dirty = false
+            obj.dirtyKeys = {}
         end
-    end)
+    end
+
+    if count > 0 then
+        Global.Remote:FireAllClients(Request.FullObjectDelta, toUpdateObjects)
+        toUpdateObjects = {}
+    end
+end
+
+if isServer then
+    game:GetService("RunService").Heartbeat:Connect(handleHeartbeat)
 end
 
 Global.__RegisterType = function(strType, typeDef)
@@ -293,8 +301,90 @@ Global.assertIs = function(d, strType)
     d:assertIs(strType)
 end
 
-Global.Remote = game:GetService("ReplicatedStorage"):WaitForChild("Replicate")
-Global.Retrieve = game:GetService("ReplicatedStorage"):WaitForChild("Retrieve")
+if _VERSION == "Luau" then --Handled by Rojo
+    Global.Remote = game:GetService("ReplicatedStorage"):WaitForChild("Replicate")
+    Global.Retrieve = game:GetService("ReplicatedStorage"):WaitForChild("Retrieve")
+else --For bindings only
+    local serverfns, clientfns = {}, {}
+    Global.Remote = {
+        FireClient = function(plr, ...)
+            for _, fn in pairs(clientfns) do
+                fn(...)
+            end
+        end,
+        FireAllClients = function(...)
+            for _, fn in pairs(clientfns) do
+                fn(...)
+            end
+        end,
+        FireServer = function(...)
+            local plr = nil
+            for _, fn in pairs(serverfns) do
+                fn(plr, ...)
+            end
+        end,
+        OnServerEvent = {
+            Connect = function(_, fn)
+                local i = #serverfns + 1
+                serverfns[i] = fn
+                return {
+                    Disconnect = function()
+                        serverfns[i] = nil
+                    end
+                }
+            end
+        },
+        OnClientEvent = {
+            Connect = function(_, fn)
+                local i = #clientfns + 1
+                clientfns[i] = fn
+                return {
+                    Disconnect = function()
+                        clientfns[i] = nil
+                    end
+                }
+            end
+        }
+    }
+    local hbfns = {}
+    Global.Heartbeat = {
+        Connect = function(_, fn)
+            local i = #hbfns + 1
+            hbfns[i] = fn
+            return {
+                Disconnect = function()
+                    hbfns[i] = nil
+                end
+            }
+        end,
+        Fire = function(...)
+            for _, fn in pairs(hbfns) do
+                fn(...)
+            end
+        end
+    }
+    Global.Retrieve = {
+        InvokeClient = function(plr, ...)
+            return Global.Retrieve.OnClientInvoke(...)
+        end,
+        InvokeServer = function(...)
+            local plr = nil
+            return Global.Retrieve.OnServerInvoke(plr, ...)
+        end,
+        OnServerInvoke = void,
+        OnClientInvoke = void,
+    }
+end
+
+Global.ConnectToHeartbeat = function(fn)
+    local i = #otherHeartbeatConnections + 1
+    otherHeartbeatConnections[i] = fn
+    return {
+        Disconnect = function()
+            otherHeartbeatConnections[i] = nil
+        end
+    }
+end
 
 Global.ref = function(obj)
     assert(obj and type(obj) == "table" and obj.ref, "expected (Object), got " .. type(obj) .. " (missing 'ref')")
@@ -331,6 +421,8 @@ Global.RestoreMt = function(obj)
     })
 
     --Restore ref MTs for first-level references
+    --TODO: So far no classes have nested references that matter.
+    --      Should any be added, verify that this works for them.
     for k, v in pairs(obj) do
         if type(v) == "table" and v.ref and not getmetatable(v) then
             setRefMt(v)
@@ -338,6 +430,15 @@ Global.RestoreMt = function(obj)
     end
 
     return obj
+end
+
+local timeShift = 0
+Global.UnreplicatedTimeTravel = function(delta)
+    timeShift = timeShift + delta
+    --Cause 60*s Heartbeats
+    for i = 1, delta*60 do
+        handleHeartbeat(1/60)
+    end
 end
 
 local fenv = getfenv(1)
@@ -365,7 +466,9 @@ if _VERSION ~= "Luau" then --Lua 5.1 support
         end
         return x
     end
-    fenv.utctime = os.time
+    fenv.utctime = function()
+        return os.time() + timeShift
+    end
     fenv.jsonEncode = function(t)
         error("JSON encoding not supported")
     end
@@ -373,8 +476,18 @@ if _VERSION ~= "Luau" then --Lua 5.1 support
         error("JSON decoding not supported")
     end
     fenv.roblox = false
+    fenv.table.find = function(t, obj)
+        for i, v in pairs(t) do
+            if v == obj then
+                return i
+            end
+        end
+    end
+    fenv.wait = wait
 else --if Luau
-    fenv.utctime = tick
+    fenv.utctime = function()
+        return tick() + timeShift
+    end
     fenv.jsonEncode = function(t)
         return game:GetService("HttpService"):JSONEncode(t)
     end
@@ -382,6 +495,7 @@ else --if Luau
         return game:GetService("HttpService"):JSONDecode(t)
     end
     fenv.roblox = true
+    fenv.wait = task.wait
 end
 
 fenv.isServer = isServer

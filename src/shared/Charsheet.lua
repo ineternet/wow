@@ -124,7 +124,7 @@ end
 Charsheet.diminishSecondaryStat = function(self, stat)
     local rating = math.round(self.equipment:aggregate(stat))
     local pctStat = (rating / SecondaryRatingConversion[stat][self.level]) * 0.01
-    return diminish(pctStat) * 100 
+    return diminish(pctStat) * 100
 end
 
 Charsheet.mastery = function(self, unit)

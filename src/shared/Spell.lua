@@ -30,6 +30,9 @@ end
 
 local function effectOnTargetModel(args)
     return function(_, _, spellTarget, _)
+        if _VERSION ~= "Luau" then
+            return
+        end
         args.effect(workspace.Dummy)
     end
 end
@@ -85,6 +88,7 @@ Spell.ApplyAura = function(spell, toUnit, aura, causer, auraData)
             auraData.duration * 0.3 --up to 30% of the base duration.
         )
         overrides.duration = auraData.duration + pandemicDuration
+        Spell.RemoveAuraInstance(toUnit, old)
     elseif overrideBehavior == AuraOverrideBehavior.Stack then
         --TODO: Implement stacking when necessary
         error("Stacking auras not implemented")
@@ -182,6 +186,35 @@ Spell.RemoveAura = function(fromUnit, aura, dispelMode, specificAmount)
     end --TODO: May need to finalize each aura to clear connections
 end
 
+Spell.RemoveAuraInstance = function(fromUnit, auraInst)
+    local auraidx = nil
+    for i, auraInstance in ipairs(fromUnit.auras.noproxy) do
+        if auraInstance:ReferenceEquals(auraInst) then
+            auraidx = i
+            break
+        end
+    end
+
+    if not auraidx then
+        return false
+    end
+
+    local shift = 0
+    local fTop = #fromUnit.auras.noproxy
+    for i = 1, fTop+1 do
+        if i == auraidx then
+            shift = shift + 1
+        end
+        if shift > 0 then
+            fromUnit.auras[i-shift] = fromUnit.auras[i]
+        end
+    end
+    for i = fTop-shift+1, fTop do
+        fromUnit.auras[i] = nil
+    end --TODO: May need to finalize each aura to clear connections
+    return true
+end
+
 local function removeAura(args)
     return function(spell, castingUnit, spellTarget, _)
         Spell.RemoveAura(spellTarget, args.aura, args.dispelMode)
@@ -192,7 +225,6 @@ end
 
 local function projectile(args)
     return function(spell, castingUnit, spellTarget, spellLocation)
-        print("Blocking for 1 second to simulate projectile travel time.")
         local fb = game.Lighting.Part:Clone()
         local start = game.Players:GetPlayers()[1].Character.HumanoidRootPart.Position
         local goal = workspace.Dummy.Torso.Position
@@ -559,7 +591,6 @@ Spells.Flamestrike:assign({
     range = Range.Long,
 
     school = Schools.Fire,
-    --instantCastWhen = hasAura(Auras.HotStreak),
     effects = {
         area {
             size = 5,

@@ -126,7 +126,7 @@ ResourceUnit.new = Constructor(ResourceUnit, {
     spellbook = use"Spellbook".new,
 
 }, function(self)
-    table.insert(self.eventConnections, game:GetService("RunService").Heartbeat:Connect(function(dt)
+    table.insert(self.eventConnections, ConnectToHeartbeat(function(dt)
         self:tick(dt)
     end))
 end)
@@ -224,7 +224,7 @@ ResourceUnit.hardCast = function(self, spell, spellTarget, spellLocation) --For 
     self.currentAction = Actions.Cast
     self.actionBegin = utctime()
     self.actionEnd = utctime() + (spell.castTime or 0)
-    self.gcdEnd = utctime() + self.charsheet:gcd(self, spell.gcd or GCD.Standard)
+    self.gcdEnd = utctime() + self.charsheet:gcd(self, spell.gcd or GCD.None)
     self.lastSpell = ref(spell)
 
     local interrupted = false
@@ -263,7 +263,7 @@ ResourceUnit.instantCast = function(self, spell, spellTarget, spellLocation) --F
         end
     end
 
-    local thisSpellGcdEnd = utctime() + self.charsheet:gcd(self, spell.gcd or GCD.Standard)
+    local thisSpellGcdEnd = utctime() + self.charsheet:gcd(self, spell.gcd or GCD.None)
 
     if not isMidCastCast then --If this is a mid-cast cast, preserve the old information
         self.currentAction = Actions.Idle --We immediately go to idle because the cast is instant
@@ -272,7 +272,6 @@ ResourceUnit.instantCast = function(self, spell, spellTarget, spellLocation) --F
         self.lastSpell = ref(spell)
     end
     self.gcdEnd = math.max(self.gcdEnd, thisSpellGcdEnd) --If the old GCD would have ended later, preserve it
-    print("New gcd end is", self.gcdEnd - utctime(), "seconds from now.")
 
     if spell.resourceCost then
         self:deltaResourceAmount(spell.resource, -self:resolveRaw(spell.resource, spell.resourceCost))
@@ -313,6 +312,9 @@ ResourceUnit.canCast = function(self, spell, target, location)
     -- 4 Check if we are facing the target, if applicable and required
     -- 5 Check if global cooldown is up, or if we are casting a spell that doesn't have a GCD
     -- 6 Check if we are in a busy action, or if we are casting a spell that doesn't interrupt
+    -- 7 Check if Spellbook agrees that the spell is off cooldown
+    -- 8 Check if we are kicked, if the spell is affected and in that school
+    -- 9 Check if for any impairing effects, or the spell is castable while impaired
 
     --1
     if spell.resourceCost then
@@ -369,11 +371,27 @@ ResourceUnit.canCast = function(self, spell, target, location)
         end]]
     end
 
+    --7
+    local ready, whyNot = self.spellbook:ready(spell)
+    if not ready then
+        return false, whyNot or "Spell is not ready"
+    end
+
+    --8
+    
+
+    --9
 
     return true, ""
 end
 
+ResourceUnit.target = function(self, otherUnit)
+    self.target = ref(otherUnit)
+end
+
 ResourceUnit.cast = function(self, spell, target, location)
+    --We assume a previous function has checked if the spell is off cooldown
+
     local casttype = spell.castType
     local spellidx = spell.index --To avoid an error on the client
 
@@ -396,7 +414,7 @@ ResourceUnit.cast = function(self, spell, target, location)
     end
 
     if not casttype then
-        warn("No cast type for spell " .. spell.name)
+        warn("No cast type for spell " .. spell.name .. " assuming Instant")
         casttype = CastType.Instant
     end
 
@@ -413,7 +431,7 @@ ResourceUnit.cast = function(self, spell, target, location)
         assert(self:isFriendly(target), "Target is not friendly")
         --TODO: check party
     elseif spell.targetType == TargetType.Any then
-        assert(target, "No target for any spell")
+        assert(target, "No target for Any spell")
     else
         error("Unknown target type " .. tostring(spell.targetType))
     end
@@ -425,10 +443,12 @@ ResourceUnit.cast = function(self, spell, target, location)
         [CastType.Passive] = ResourceUnit.passiveCast,
     })[casttype](self, spell, target, location)
 
+    self.spellbook:postCast(spell)
+
     return true
 end
 
-ResourceUnit.wantToCast = function(self, spell) --On user input, on npc logic
+ResourceUnit.wantToCast = function(self, spell, target, location) --On user input, on npc logic
     local target = target or self.target
     local location = location or self.location
 
@@ -465,6 +485,7 @@ end
 
 ResourceUnit.tick = function(self, deltaTime)
     self:regenTick(deltaTime, self:isInCombat())
+    self.spellbook:tick(deltaTime)
     ResourceUnit.super.tick(self, deltaTime)
 end
 

@@ -7,7 +7,7 @@ Unit.new = Constructor(Unit, {
 })
 
 Unit.tick = function(self, deltaTime)
-    self.dirty = true
+    Unit.super.tick(self, deltaTime)
 end
 
 return Unit

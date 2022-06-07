@@ -267,13 +267,28 @@ const = {
         OffHand = 12,
     },
     AuraOverrideBehavior = {
-        Ignore = 0, --Multiple aura instances can coexist. Just apply the new aura.
-        ClearOldApplyNew = 1, --Remove all old auras and apply a new one.
-        UpdateOldDuration = 2, --Update the duration of the old aura to the new aura's duration.
-        Pandemic = 3, --Clear old aura, apply new aura, set new aura duration according to Pandemic rules.
-        Stack = 4, --Attempt to add a stack to the old aura and update its duration.
-        StackDontUpdate = 5, --Stack, but do not update the duration.
+        Ignore = 0,              --Multiple aura instances can coexist. Just apply the new aura.
+        ClearOldApplyNew = 1,    --Remove all old auras and apply a new one.
+        UpdateOldDuration = 2,   --Update the duration of the old aura to the new aura's duration.
+        Pandemic = 3,            --Clear old aura, apply new aura, set new aura duration according to Pandemic rules.
+        Stack = 4,               --Attempt to add a stack to the old aura and update its duration.
+        StackDontUpdate = 5,     --Stack, but do not update the duration.
         DropThisApplication = 6, --If an old aura is found, do not apply the new aura.
+        DiminishingReturns = 7,  --Ignore, but new duration is based on how many
+                                 --times this or similar auras have been applied
+                                 --in the last X seconds.
+    },
+    DRGroup = { --Diminishing returns groups. Most of these are only in PVP.
+        None = 0, --Does not apply or is influenced by diminishing returns.
+        Stun = 1, --Affects PVE.
+        Silence = 2,
+        Kick = 3, --Interrupts cause this.
+        Root = 4,
+        Snare = 5, --There are no DR on snares, but the logic remains the same.
+        Fear = 6,
+        Charm = 7,
+        Disorient = 8,
+        Incapacitate = 9,
     },
     Enchants = { --IDs are indices of this table (i.e. auto-increment)
         MinorStamina = enchant {
@@ -496,7 +511,9 @@ const.ResourceNames = { --The names of the resources
     [const.Resources.ComboPoints] = "Combo Points",
 }
 
-const.LosRules = {
+const.LosRules = { --Default LOS rules
+    --true means LOS is required, false means LOS is not required
+    --Spells may override this by setting "losRequired" to true or false.
     [const.TargetType.Self] = false,
     [const.TargetType.Enemy] = true,
     [const.TargetType.Friendly] = true,
@@ -505,7 +522,9 @@ const.LosRules = {
     [const.TargetType.Area] = true,
 }
 
-const.FacingRules = {
+const.FacingRules = { --Default facing rules
+    --true means facing is required, false means facing is not required
+    --Spells may override this by setting "facingRequired" to true or false.
     [const.TargetType.Self] = false,
     [const.TargetType.Enemy] = true,
     [const.TargetType.Friendly] = false,
@@ -515,7 +534,7 @@ const.FacingRules = {
 }
 
 const.AuraTimer = function(seconds)
-    --Return a string that represents the time in weeks, days, hours, minutes or seconds
+    --Return a string that represents the time up to weeks, for aura display.
     if seconds < 60 then
         return string.format("%ds", seconds)
     elseif seconds < 3600 then

@@ -220,8 +220,8 @@ Auras.BearForm:assign({
     override = AuraOverrideBehavior.DropThisApplication,
 })
 
-Aura.Corruption = Aura.new()
-Aura.Corruption:assign({
+Auras.Corruption = Aura.new()
+Auras.Corruption:assign({
     name = "Corruption",
     tooltip = function(sheet)
         local str = "Suffering %s Shadow damage every %s."
@@ -234,6 +234,20 @@ Aura.Corruption:assign({
     decayType = AuraDecayType.Timed,
     override = AuraOverrideBehavior.Pandemic,
     affectedByCauserHaste = true,
+})
+
+Auras.Kicked = Aura.new()
+Auras.Kicked:assign({
+    name = "Kicked",
+    tooltip = function(sheet)
+        local str = "This unit has been kicked and cannot be healed."
+        return str
+    end,
+    icon = "rbxassetid://1337",
+    effectType = AuraDispelType.None,
+    auraType = AuraType.Hidden,
+    decayType = AuraDecayType.Timed,
+    override = AuraOverrideBehavior.DiminishingReturns,
 })
 
 return Aura
