@@ -25,5 +25,5 @@ local stamdagger = items.newOf(const.Items.StamDagger)
 
 local _ = tu.charsheet.equipment:swap(const.Slots.MainHand, stamdagger)
 
-print(tu.charsheet:spellPower())
+print(tu.charsheet:spellPower(tu))
 --> 51

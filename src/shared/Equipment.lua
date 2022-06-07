@@ -55,6 +55,7 @@ function Equipment:aggregate(stat)
 end
 
 function Equipment:swap(slot, newItem)
+    assertObj(newItem)
     newItem:assertIs("Item")
     local oldItem = self.slots[slot]
     self.slots[slot] = newItem

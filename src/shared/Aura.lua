@@ -11,7 +11,7 @@ end
 
 local function schoolDot(school)
     return function(aura, deltaTime, owner, tickStrength)
-        use"Spell".SchoolDamage(aura.causer, owner, (aura.damage(aura.causer, aura.causer.charsheet) / aura.duration) * tickStrength, school, 1)
+        use"Spell".SchoolDamage(aura.spellSource, aura.causer, owner, (aura.damage(aura.causer, aura.causer.charsheet) / aura.duration) * tickStrength, school, 1)
     end
 end
 

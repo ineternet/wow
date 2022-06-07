@@ -43,20 +43,22 @@ Object.new = AbstractClassConstructor
 
 -- Functions
 
-local downstreamRemote = Instance.new("RemoteFunction")
-Object.downstream = function(self) --This is called on clients and requests the server to update this object.
-    local strobj = downstreamRemote.InvokeServer(Remote, Request.Downstream, UniqueRequestId(), self.ref)
+if roblox then
+    local downstreamRemote = Instance.new("RemoteFunction")
+    Object.downstream = function(self) --This is called on clients and requests the server to update this object.
+        local strobj = downstreamRemote.InvokeServer(Remote, Request.Downstream, UniqueRequestId(), self.ref)
 
-    self:Deserialize(strobj)
+        self:Deserialize(strobj)
 
-    return nil --Does not return the new object, only updates the given reference
-end
-if game:GetService("RunService"):IsServer() then
-    Retrieve.OnServerInvoke = function(player, request, requestId, dsRef) --This handles downstream requests
-        if request ~= Request.Downstream then return end
-        local obj = __FindByReference(dsRef)
-        local objInfo = obj:RemoteSerialize()
-        return objInfo --Give the object info back to the client
+        return nil --Does not return the new object, only updates the given reference
+    end
+    if isServer then
+        Retrieve.OnServerInvoke = function(player, request, requestId, dsRef) --This handles downstream requests
+            if request ~= Request.Downstream then return end
+            local obj = __FindByReference(dsRef)
+            local objInfo = obj:RemoteSerialize()
+            return objInfo --Give the object info back to the client
+        end
     end
 end
 

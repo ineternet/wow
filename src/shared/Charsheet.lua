@@ -86,7 +86,7 @@ end
 
 Charsheet.spellPower = function(self, unit)
     local value = math.round(self.equipment:aggregate("spellPower")) + self:intellect(unit)
-    if self.spec == Specs.Protection then
+    if self.spec == Specs.Crusader then
         value = self:abilityDamage(true) * 1.01
     end
     if self.spec == Specs.Feral or self.spec == Specs.Guardian then

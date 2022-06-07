@@ -3,6 +3,11 @@ local Global = {}
 local typeIndex = {}
 local const = require(script.Parent.Const)
 
+local isServer = game:GetService("RunService"):IsServer()
+if _VERSION ~= "Luau" then
+    isServer = true
+end
+
 Global.void = function() end
 
 Global.IsPrimitive = function(x)
@@ -39,7 +44,7 @@ local objectIndex = {}
 local activeRetrievals = {}
 Global.__FindByReference = function(ref)
     local obj = objectIndex[ref]
-    if not obj and not game:GetService("RunService"):IsServer() then
+    if not obj and not isServer then
         if activeRetrievals[ref] then
             warn("Object reference " .. ref .. " is already being retrieved. Returning nil.")
             return nil
@@ -59,7 +64,7 @@ Global.__FindByReference = function(ref)
     return obj
 end
 
-if game:GetService("RunService"):IsServer() then
+if isServer then
     local toUpdateObjects = {}
     game:GetService("RunService").Heartbeat:Connect(function()
         local count = 0
@@ -92,8 +97,6 @@ Global.__RegisterType = function(strType, typeDef)
     typeIndex[typeDef] = strType
 end
 
-local isServer = game:GetService("RunService"):IsServer()
-
 local clientTypes = {
     --These types:
     -- - Can be created on client side
@@ -106,7 +109,7 @@ local clientTypes = {
 }
 
 Global.__MakeObject = function(ofType) --Create object. EVERY created object calls this.
-    if not game:GetService("RunService"):IsServer() then
+    if not isServer then
         --Client create is allowed only for certain types
         if not clientTypes[ofType.type] then
             error("Cannot create object " .. tostring(ofType.type) .. " on client")
@@ -303,7 +306,7 @@ Global.ref = function(obj)
 end
 
 --TODO: For some reason this doesn't work, for now this code is in a server script
---[[if game:GetService("RunService"):IsServer() then
+--[[if isServer then
     print"Server"
     Global.Retrieve.OnServerInvoke = function(player, action, arg)
         print("Retrieve: " .. action)
@@ -344,6 +347,7 @@ end
 for k, v in pairs(const) do
     fenv[k] = v
 end
+
 if _VERSION ~= "Luau" then --Lua 5.1 support
     fenv.math.round = function(x)
         if x > 0 then
@@ -368,6 +372,7 @@ if _VERSION ~= "Luau" then --Lua 5.1 support
     fenv.jsonDecode = function(t)
         error("JSON decoding not supported")
     end
+    fenv.roblox = false
 else --if Luau
     fenv.utctime = tick
     fenv.jsonEncode = function(t)
@@ -376,6 +381,9 @@ else --if Luau
     fenv.jsonDecode = function(t)
         return game:GetService("HttpService"):JSONDecode(t)
     end
+    fenv.roblox = true
 end
+
+fenv.isServer = isServer
 
 return fenv

@@ -8,7 +8,7 @@ local function spellDummy(spell, castingUnit, spellTarget, spellLocation)
     return function() end --If this function returns "true", following effects will NOT be applied.
 end
 
-Spell.SchoolDamage = function(castingUnit, spellTarget, damage, school, pvpModifier, forceCrit)
+Spell.SchoolDamage = function(spell, castingUnit, spellTarget, damage, school, pvpModifier, forceCrit)
     local crit = forceCrit or castingUnit:procCrit(spell)
     local isPvp = spellTarget and spellTarget:is"PlayerUnit"
     if isPvp then
@@ -38,7 +38,7 @@ local function schoolDamage(args)
     return function(spell, castingUnit, spellTarget, _)
         local damage = args.damage(castingUnit, castingUnit.charsheet)
         local school = args.school
-        local result = Spell.SchoolDamage(castingUnit, spellTarget, damage, school, args.pvp, args.forceCrit)
+        local result = Spell.SchoolDamage(spell, castingUnit, spellTarget, damage, school, args.pvp, args.forceCrit)
     
         if result.crit then
             castingUnit.spellbook:onSpellCritical(castingUnit, spell, spellTarget, _)
@@ -58,11 +58,12 @@ local function area(args)
     end
 end
 
-Spell.ApplyAura = function(toUnit, aura, causer, auraData)
+Spell.ApplyAura = function(spell, toUnit, aura, causer, auraData)
 
     local overrideBehavior = auraData.override or aura.override or AuraOverrideBehavior.Ignore
 
     local overrides = {
+        sourceSpell = spell,
         doNotCreateNewAura = false,
         updateOldAura = false,
         oldAura = nil,
@@ -121,7 +122,7 @@ end
 
 local function applyAura(args)
     return function(spell, castingUnit, spellTarget, _)
-        Spell.ApplyAura(spellTarget, args.aura, castingUnit, args.auraData)
+        Spell.ApplyAura(spell, spellTarget, args.aura, castingUnit, args.auraData)
     end
 end
 
