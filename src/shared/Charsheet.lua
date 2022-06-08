@@ -14,6 +14,8 @@ Charsheet.new = Constructor(Charsheet, {
 
     equipment = use"Equipment".new,
 
+    spellbook = use"Spellbook".new,
+
     --unit = nil
 }, function(self)
     --self.equipment = ref(use"Equipment".new())

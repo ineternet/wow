@@ -73,6 +73,10 @@ Aura.createInstance = function(self)
     return aura
 end
 
+Aura.isBeneficial = function(self)
+    return self.auraType == AuraType.Buff
+end
+
 local QueryHandler = {
     RemoveThisAura = function(dispelMode)
         return function(self, unit)

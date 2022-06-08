@@ -441,6 +441,14 @@ Global.UnreplicatedTimeTravel = function(delta)
     end
 end
 
+Global.resolveNumFn = function(x, ...)
+    if type(x) == "function" then
+        return x(...)
+    else
+        return x
+    end
+end
+
 local fenv = getfenv(1)
 for k, v in pairs(Global) do
     fenv[k] = v

@@ -90,7 +90,7 @@ Spellbook.tick = function(self, deltaTime)
     Spellbook.super.tick(self, deltaTime)
 end
 
-Spellbook.postCast = function(self, spell)
+Spellbook.postCast = function(self, spell, unit)
     assertObj(spell)
     spell:assertIs("Spell")
 
@@ -103,7 +103,7 @@ Spellbook.postCast = function(self, spell)
                 end
                 spellbookEntry.charges = spellbookEntry.charges - 1
             end
-            spellbookEntry.readyAt = utctime() + spellbookEntry.spell.cooldown
+            spellbookEntry.readyAt = utctime() + resolveNumFn(spellbookEntry.spell.cooldown, unit.charsheet)
             return true
         end
     end

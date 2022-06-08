@@ -413,6 +413,11 @@ const = {
         All = 3, --All auras are dispelled.
         SpecificAmount = 4, --Only a specific amount of auras are dispelled. The amount is specified in "dispelAmount".
     },
+    AuraRemovalMode = bidirectional { --Enum that decides how auras are removed.
+        ByAura = 0, --Argument is aura
+        ById = 1, --Arguement is aura id
+        ByDispelType = 2, --Argument is AuraDispelType
+    },
     AuraType = bidirectional { --How auras are shown
         InternalBuff = 2, --Aura is shown as a buff, but is not cancellable
         Buff = 1, --Aura is shown as a buff and can be cancelled with right click

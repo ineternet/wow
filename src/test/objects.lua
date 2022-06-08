@@ -44,16 +44,20 @@ local _ = tu.charsheet.equipment:swap(const.Slots.OffHand, stamdagger2)
 
 print("Spell Power:", tu.charsheet:spellPower(tu))
 
-tu.spellbook:learn(const.Spells.StartAttack)
-tu.spellbook:learn(const.Spells.FireBlast)
-tu.spellbook:learn(const.Spells.Pyroblast)
+tu.charsheet.spellbook:learn(const.Spells.StartAttack)
+tu.charsheet.spellbook:learn(const.Spells.FireBlast)
+tu.charsheet.spellbook:learn(const.Spells.Pyroblast)
+tu.charsheet.spellbook:learn(const.Spells.Spellsteal)
+tu.charsheet.spellbook:learn(const.Spells.Kleptomancy)
+--ll.ApplyAura = function(spell, toUnit, aura, causer, auraData)
+env.use"Spell".ApplyAura(nil, enemy, const.Auras.ArcaneIntellect, nil, { duration = 60*60 })
+env.use"Spell".ApplyAura(const.Spells.Corruption, enemy, const.Auras.Corruption, tu, { duration = 60*60 })
 
-print("Enemy Hp:", enemy.primaryResourceAmount)
-print("Casting Attack:", tu:wantToCast(const.Spells.StartAttack))
-print("Enemy Hp:", enemy.primaryResourceAmount)
-print("Skipping 5 seconds")
-env.UnreplicatedTimeTravel(5)
-print("Enemy Hp:", enemy.primaryResourceAmount)
-
-
---> 51
+print("Enemy Aura Num:   ", #enemy.auras.noproxy)
+print("Enemy Aura #1 Name:", enemy.auras.noproxy[1].aura.name)
+print("Caster Aura Num:", #tu.auras.noproxy)
+print("Caster Int:     ", tu.charsheet:intellect(tu))
+print("Casting Spellsteal:", tu:wantToCast(const.Spells.Spellsteal))
+print("Enemy Aura Num:   ", #enemy.auras.noproxy)
+print("Caster Aura Num:", #tu.auras.noproxy)
+print("Caster Int:     ", tu.charsheet:intellect(tu))

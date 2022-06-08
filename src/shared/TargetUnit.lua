@@ -76,9 +76,9 @@ end
 
 TargetUnit.auraStatFlat = function(self, stat)
     local value = 0
-    for _, aura in ipairs(self.auras) do
-        if aura.statFlat and aura.statFlat[stat] then
-            value = value + aura.statFlat[stat]
+    for _, auraInstance in ipairs(self.auras.noproxy) do
+        if auraInstance.aura.statFlat and auraInstance.aura.statFlat[stat] then
+            value = value + auraInstance.aura.statFlat[stat]
         end
     end
     return value
@@ -86,9 +86,9 @@ end
 
 TargetUnit.auraStatMod = function(self, stat)
     local value = 1
-    for _, aura in ipairs(self.auras) do
-        if aura.statMod and aura.statMod[stat] then
-            value = value * (1 + aura.statMod[stat])
+    for _, auraInstance in ipairs(self.auras.noproxy) do
+        if auraInstance.aura.statMod and auraInstance.aura.statMod[stat] then
+            value = value * (1 + auraInstance.aura.statMod[stat])
         end
     end
     return value

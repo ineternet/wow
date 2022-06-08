@@ -49,7 +49,7 @@ local function schoolDamage(args)
         local result = Spell.SchoolDamage(spell, castingUnit, spellTarget, damage, school, args.pvp, args.forceCrit)
     
         if result.crit then
-            castingUnit.spellbook:onSpellCritical(castingUnit, spell, spellTarget, _)
+            castingUnit.charsheet.spellbook:onSpellCritical(castingUnit, spell, spellTarget, _)
         end
     end
 end
@@ -67,7 +67,6 @@ local function area(args)
 end
 
 Spell.ApplyAura = function(spell, toUnit, aura, causer, auraData)
-
     local overrideBehavior = auraData.override or aura.override or AuraOverrideBehavior.Ignore
 
     local overrides = {
@@ -93,7 +92,9 @@ Spell.ApplyAura = function(spell, toUnit, aura, causer, auraData)
             auraData.duration * 0.3 --up to 30% of the base duration.
         )
         overrides.duration = auraData.duration + pandemicDuration
-        Spell.RemoveAuraInstance(toUnit, old)
+        if old then
+            Spell.RemoveAuraInstance(toUnit, old)
+        end
     elseif overrideBehavior == AuraOverrideBehavior.Stack then
         --TODO: Implement stacking when necessary
         error("Stacking auras not implemented")
@@ -121,11 +122,14 @@ Spell.ApplyAura = function(spell, toUnit, aura, causer, auraData)
                 auraInstance[k] = v
             end
         end
-        auraInstance.causer = ref(causer)
+        if causer then
+            auraInstance.causer = ref(causer)
+        end
     end
 
     if auraInstance then
         replicatedInsert(toUnit.auras, auraInstance)
+        return auraInstance
     end
 end
 
@@ -135,7 +139,7 @@ local function applyAura(args)
     end
 end
 
-Spell.RemoveAura = function(fromUnit, aura, dispelMode, specificAmount)
+Spell.RemoveAura = function(fromUnit, auraOrArg, dispelMode, specificAmount, removalMode, onlyRemoveThisType)
     if not dispelMode then
         dispelMode = DispelMode.All
     end
@@ -143,14 +147,16 @@ Spell.RemoveAura = function(fromUnit, aura, dispelMode, specificAmount)
         return
     end
 
-    print("Attempting to remove aura", aura, "from", fromUnit)
-
     local markedForRemoval = {}
     local amountMarked = 0
     local latestTime = 0
     local latestAura = nil
     for i, auraInstance in ipairs(fromUnit.auras.noproxy) do
-        if auraInstance.aura.id == aura.id then
+        if (((not removalMode or removalMode == AuraRemovalMode.ById) and auraInstance.aura.id == auraOrArg.id)
+        or (removalMode == AuraRemovalMode.ByDispelType and auraInstance.aura.effectType == auraOrArg and auraOrArg ~= nil)
+        or (removalMode == AuraRemovalMode.ByAura and auraInstance.aura == auraOrArg)) --Avoid using this mode, it does not work across sides
+        and (not onlyRemoveThisType or auraInstance.aura.auraType == onlyRemoveThisType)
+        then
             if dispelMode ~= DispelMode.Latest then
                 markedForRemoval[i] = true
             else
@@ -174,8 +180,13 @@ Spell.RemoveAura = function(fromUnit, aura, dispelMode, specificAmount)
         markedForRemoval[latestAura] = true
     end
 
-    print("Marked for removal:", markedForRemoval)
-
+    local removedAurasForReturn = {}
+    for i, _ in pairs(markedForRemoval) do
+        local auraInstance = fromUnit.auras.noproxy[i]
+        if auraInstance then
+            removedAurasForReturn[#removedAurasForReturn + 1] = auraInstance
+        end
+    end
     local shift = 0
     local fTop = #fromUnit.auras.noproxy
     for i = 1, fTop+1 do
@@ -189,6 +200,8 @@ Spell.RemoveAura = function(fromUnit, aura, dispelMode, specificAmount)
     for i = fTop-shift+1, fTop do
         fromUnit.auras[i] = nil
     end --TODO: May need to finalize each aura to clear connections
+
+    return removedAurasForReturn
 end
 
 Spell.RemoveAuraInstance = function(fromUnit, auraInst)
@@ -226,7 +239,15 @@ local function removeAura(args)
     end
 end
 
-
+local function spellSteal(args)
+    return function(_, castingUnit, spellTarget, _)
+        --We assume spell steals will only ever steal beneficial effects
+        local removedAuras = Spell.RemoveAura(spellTarget, args.dispelType, args.dispelMode, args.amount, AuraRemovalMode.ByDispelType, AuraType.Buff)
+        for _, auraInstance in ipairs(removedAuras) do
+            replicatedInsert(castingUnit.auras, auraInstance)
+        end
+    end
+end
 
 local function projectile(args)
     return function(spell, castingUnit, spellTarget, spellLocation)
@@ -269,6 +290,22 @@ local function ifHasAura(aura)
             local compoundReturn = false
 
             if castingUnit:hasAura(aura) then
+                compoundReturn = args.dropFollowingEffects
+                compoundReturn = effect(spell, castingUnit, spellTarget, spellLocation) or compoundReturn
+            end
+
+            return compoundReturn
+        end
+    end
+end
+
+local function ifKnowsSpell(preSpell)
+    return function(args)
+        return function(spell, castingUnit, spellTarget, spellLocation)
+            local effect = args.effect or args[1]
+            local compoundReturn = false
+
+            if castingUnit.charsheet.spellbook:hasSpell(preSpell) then
                 compoundReturn = args.dropFollowingEffects
                 compoundReturn = effect(spell, castingUnit, spellTarget, spellLocation) or compoundReturn
             end
@@ -690,8 +727,8 @@ Spells.FlashOfLight:assign({
     },
 })
 
-Spell.Corruption = Spell.new()
-Spell.Corruption:assign({
+Spells.Corruption = Spell.new()
+Spells.Corruption:assign({
     name = "Corruption",
     tooltip = function(sheet)
         local str = "Corrupts the target, causing "
@@ -729,6 +766,75 @@ Spell.Corruption:assign({
             auraData = {
                 duration = 14,
             },
+        },
+    },
+})
+
+Spells.Kleptomancy = Spell.new()
+Spells.Kleptomancy:assign({
+    name = "Kleptomancy",
+    tooltip = function(sheet)
+        local str = "Spellsteal steals all beneficial Magic effects from the target, costs 300% more Mana, and has a 30sec cooldown."
+        return str
+    end,
+    icon = "rbxassetid://1337",
+
+    castType = CastType.Passive,
+
+    school = Schools.Physical,
+})
+
+Spells.Spellsteal = Spell.new()
+Spells.Spellsteal:assign({
+    name = "Spellsteal",
+    tooltip = function(sheet)
+        local str = "Remove "
+        if sheet.spellbook:hasSpell(Spells.Kleptomancy) then
+            str = str .. "all beneficial Magic effects from an enemy, gaining them for yourself."
+            str = str .. Linebreak .. "These effects will last a maximum of 2 min."
+        else
+            str = str .. "one beneficial Magic effect from an enemy, gaining it for yourself."
+            str = str .. Linebreak .. "The effect will last a maximum of 2 min."
+        end
+        return str
+    end,
+    icon = "rbxassetid://1337",
+
+    resource = Resources.Mana,
+    resourceCost = function(sheet)
+        local mod = 1
+        if sheet.spellbook:hasSpell(Spells.Kleptomancy) then
+            mod = mod + 3
+        end
+        return 0.21 * mod
+    end,
+
+    cooldown = function(sheet)
+        if sheet.spellbook:hasSpell(Spells.Kleptomancy) then
+            return 30
+        else
+            return 5
+        end
+    end,
+    gcd = GCD.Standard,
+
+    castType = CastType.Instant,
+    targetType = TargetType.Enemy,
+    range = Range.Combat,
+
+    school = Schools.Arcane,
+    effects = {
+        ifKnowsSpell(Spells.Kleptomancy) {
+            dropFollowingEffects = true,
+            spellSteal {
+                dispelType = AuraDispelType.Magic,
+                dispelMode = DispelMode.All,
+            },
+        },
+        spellSteal {
+            dispelType = AuraDispelType.Magic,
+            dispelMode = DispelMode.SpecificAmount,
+            amount = 1,
         },
     },
 })

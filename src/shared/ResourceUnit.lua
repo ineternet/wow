@@ -128,8 +128,6 @@ ResourceUnit.new = Constructor(ResourceUnit, {
 
     soulFragmentRegenTick = utctime(),
 
-    spellbook = use"Spellbook".new,
-
 }, function(self)
     table.insert(self.eventConnections, ConnectToHeartbeat(function(dt)
         self:tick(dt)
@@ -281,7 +279,7 @@ ResourceUnit.hardCast = function(self, spell, spellTarget, spellLocation) --For 
     task.delay(castDuration, function()
         if not interrupted then
             if spell.resourceCost then
-                self:deltaResourceAmount(spell.resource, -self:resolveRaw(spell.resource, spell.resourceCost))
+                self:deltaResourceAmount(spell.resource, -self:resolveRaw(spell.resource, resolveNumFn(spell.resourceCost, self.charsheet)))
             end
             self.currentAction = Actions.Idle
             for order, effect in ipairs(spell.effects) do
@@ -319,7 +317,7 @@ ResourceUnit.instantCast = function(self, spell, spellTarget, spellLocation) --F
     self.gcdEnd = math.max(self.gcdEnd, thisSpellGcdEnd) --If the old GCD would have ended later, preserve it
 
     if spell.resourceCost then
-        self:deltaResourceAmount(spell.resource, -self:resolveRaw(spell.resource, spell.resourceCost))
+        self:deltaResourceAmount(spell.resource, -self:resolveRaw(spell.resource, resolveNumFn(spell.resourceCost, self.charsheet)))
     end
     for order, effect in ipairs(spell.effects) do
         if effect(spell, self, spellTarget, spellLocation) then
@@ -334,7 +332,7 @@ ResourceUnit.passiveCast = function(self, spell, spellTarget, spellLocation) --F
     --We dont set any timers or the last spell here
 
     if spell.resourceCost then
-        self:deltaResourceAmount(spell.resource, -self:resolveRaw(spell.resource, spell.resourceCost))
+        self:deltaResourceAmount(spell.resource, -self:resolveRaw(spell.resource, resolveNumFn(spell.resourceCost, self.charsheet)))
     end
 
     for order, effect in ipairs(spell.effects) do
@@ -364,7 +362,7 @@ ResourceUnit.canCast = function(self, spell, target, location)
     --1
     if spell.resourceCost then
         local resourceAmount = self:getResourceAmount(spell.resource)
-        local resourceCost = self:resolveRaw(spell.resource, spell.resourceCost)
+        local resourceCost = self:resolveRaw(spell.resource, resolveNumFn(spell.resourceCost, self.charsheet))
         if resourceAmount < resourceCost then
             return false, "Not enough " .. ResourceNames[spell.resource]
         end
@@ -417,7 +415,7 @@ ResourceUnit.canCast = function(self, spell, target, location)
     end
 
     --7
-    local ready, whyNot = self.spellbook:ready(spell)
+    local ready, whyNot = self.charsheet.spellbook:ready(spell)
     if not ready then
         return false, whyNot or "Spell is not ready"
     end
@@ -488,7 +486,7 @@ ResourceUnit.cast = function(self, spell, target, location)
         [CastType.Passive] = ResourceUnit.passiveCast,
     })[casttype](self, spell, target, location)
 
-    self.spellbook:postCast(spell)
+    self.charsheet.spellbook:postCast(spell, self)
 
     return true
 end
@@ -554,7 +552,7 @@ ResourceUnit.tick = function(self, deltaTime)
         end
     end
 
-    self.spellbook:tick(deltaTime)
+    self.charsheet.spellbook:tick(deltaTime)
     ResourceUnit.super.tick(self, deltaTime)
 end
 
