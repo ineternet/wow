@@ -19,6 +19,10 @@ Charsheet.new = Constructor(Charsheet, {
     --self.equipment = ref(use"Equipment".new())
 end)
 
+Charsheet.canDualWield = function(self)
+    return self.class == Classes.Warrior or self.class == Classes.Rogue
+end
+
 Charsheet.baseMana = function(self)
     local value = BaseMana[self.level]
     if self.class == Classes.Mage or self.class == Classes.Priest or self.class == Classes.Warlock then

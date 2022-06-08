@@ -8,6 +8,12 @@ local function spellDummy(spell, castingUnit, spellTarget, spellLocation)
     return function() end --If this function returns "true", following effects will NOT be applied.
 end
 
+local function startAttack(spell, castingUnit, spellTarget, spellLocation)
+    castingUnit:targetUnit(spellTarget)
+    castingUnit:startMainHandSwing(0)
+    castingUnit:startOffHandSwing(0.15)
+end
+
 Spell.SchoolDamage = function(spell, castingUnit, spellTarget, damage, school, pvpModifier, forceCrit)
     local crit = forceCrit or castingUnit:procCrit(spell)
     local isPvp = spellTarget and spellTarget:is"PlayerUnit"
@@ -25,7 +31,6 @@ Spell.SchoolDamage = function(spell, castingUnit, spellTarget, damage, school, p
         isPvp = isPvp,
         finalDamage = damage
     }
-    
 end
 
 local function effectOnTargetModel(args)
@@ -339,10 +344,12 @@ Spell.new = Constructor(Spell, {
     self.id = logicalIncrement
 end)
 
+
+
 Spells.ApplyDummyAura = Spell.new()
 Spells.ApplyDummyAura:assign({
     name = "Apply Dummy Aura",
-    description = "Applies a dummy aura to the target.",
+    tooltip = function(sheet) return "Applies a dummy aura to the target." end,
     icon = "rbxassetid://1337",
     effects = {
         applyAura {
@@ -535,7 +542,7 @@ Spells.ArcaneIntellect:assign({
     name = "Arcane Intellect",
     tooltip = function(sheet)
         local str = "Increases the Intellect of an ally by %s%% for 60 minutes."
-        str = str .. "\n\n" .. "If cast on a party member, everyone in the party gains the same bonus."
+        str = str .. Linebreak .. "If cast on a party member, everyone in the party gains the same bonus."
         return str
     end,
     icon = "rbxassetid://1337",
@@ -726,5 +733,22 @@ Spell.Corruption:assign({
     },
 })
 
+Spells.StartAttack = Spell.new()
+Spells.StartAttack:assign({
+    name = "Attack",
+    tooltip = function(sheet)
+        if sheet.equipment:has(Slots.MainHand) and sheet.equipment:has(Slots.OffHand) and sheet:canDualWield() then
+            return "Start attacking your target with both weapons."
+        end
+        return "Start attacking your target with your main hand weapon."
+    end,
+
+    targetType = TargetType.Enemy,
+    range = Range.Combat,
+
+    effects = {
+        startAttack
+    }
+})
 
 return Spell

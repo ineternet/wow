@@ -119,6 +119,11 @@ ResourceUnit.new = Constructor(ResourceUnit, {
     gcdEnd = utctime(),
     interruptCast = nil,
 
+    mainSwingPassed = 0,
+    mainSwinging = false,
+    offSwingPassed = 0,
+    offSwinging = false,
+
     lastAggressiveAction = utctime(),
 
     soulFragmentRegenTick = utctime(),
@@ -130,6 +135,46 @@ ResourceUnit.new = Constructor(ResourceUnit, {
         self:tick(dt)
     end))
 end)
+
+ResourceUnit.startMainHandSwing = function(self, after)
+    if not self.charsheet.equipment:has(Slots.MainHand) or not self.charsheet.equipment:get(Slots.MainHand):swingable() then
+        return
+    end
+    if self.interruptCast then
+        self.interruptCast()
+    end
+    self.currentAction = Actions.Swing
+    self.actionBegin = utctime()
+    self.actionEnd = utctime() --TODO: verify interactions
+    local contfn = function()
+        self.mainSwinging = true
+    end
+    if after <= 0 then --Im not sure if task.delay(0) immediately executes
+        contfn()
+    else
+        delay(after, contfn)
+    end
+end
+
+ResourceUnit.startOffHandSwing = function(self, after)
+    if not self.charsheet.equipment:has(Slots.OffHand) or not self.charsheet.equipment:get(Slots.OffHand):swingable() then
+        return
+    end
+    if self.interruptCast then
+        self.interruptCast()
+    end
+    self.currentAction = Actions.Swing
+    self.actionBegin = utctime()
+    self.actionEnd = utctime() --TODO: verify interactions
+    local contfn = function()
+        self.offSwinging = true
+    end
+    if after <= 0 then --Im not sure if task.delay(0) immediately executes
+        contfn()
+    else
+        delay(after, contfn)
+    end
+end
 
 ResourceUnit.getPool = function(self, resourceType)
     for _, pool in ipairs({
@@ -385,7 +430,7 @@ ResourceUnit.canCast = function(self, spell, target, location)
     return true, ""
 end
 
-ResourceUnit.target = function(self, otherUnit)
+ResourceUnit.targetUnit = function(self, otherUnit)
     self.target = ref(otherUnit)
 end
 
@@ -485,6 +530,30 @@ end
 
 ResourceUnit.tick = function(self, deltaTime)
     self:regenTick(deltaTime, self:isInCombat())
+
+    if self.currentAction == Actions.Swing then
+        if self.mainSwinging then
+            self.mainSwingPassed = self.mainSwingPassed + deltaTime
+            local timeout = self.charsheet.equipment:get(Slots.MainHand):swingTimeout()
+            if self.mainSwingPassed >= timeout then
+                self.mainSwingPassed = self.mainSwingPassed - timeout
+                --damage
+                local dam = self.charsheet:totalMainHandDamage()
+                use"Spell".SchoolDamage(Spells.StartAttack, self, self.target, dam, Schools.Physical)
+            end
+        end
+        if self.offSwinging then
+            self.offSwingPassed = self.offSwingPassed + deltaTime
+            local timeout = self.charsheet.equipment:get(Slots.OffHand):swingTimeout()
+            if self.offSwingPassed >= timeout then
+                self.offSwingPassed = self.offSwingPassed - timeout
+                --damage
+                local dam = self.charsheet:totalOffHandDamage()
+                use"Spell".SchoolDamage(Spells.StartAttack, self, self.target, dam, Schools.Physical)
+            end
+        end
+    end
+
     self.spellbook:tick(deltaTime)
     ResourceUnit.super.tick(self, deltaTime)
 end

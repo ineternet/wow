@@ -62,4 +62,12 @@ function Equipment:swap(slot, newItem)
     return oldItem
 end
 
+function Equipment:has(slot)
+    return self.slots[slot] ~= nil and self.slots[slot] ~= Items.NullItem
+end
+
+function Equipment:get(slot)
+    return self.slots[slot]
+end
+
 return Equipment

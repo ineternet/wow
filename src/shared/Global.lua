@@ -484,6 +484,7 @@ if _VERSION ~= "Luau" then --Lua 5.1 support
         end
     end
     fenv.wait = wait
+    fenv.delay = delay
 else --if Luau
     fenv.utctime = function()
         return tick() + timeShift
@@ -496,6 +497,7 @@ else --if Luau
     end
     fenv.roblox = true
     fenv.wait = task.wait
+    fenv.delay = task.delay
 end
 
 fenv.isServer = isServer

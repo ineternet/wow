@@ -34,27 +34,26 @@ enemy.primaryResource = const.Resources.Health
 enemy.primaryResourceMaximum = 400
 enemy.primaryResourceAmount = 400
 
-tu:target(enemy)
+tu:targetUnit(enemy)
 
 local stamdagger = items.newOf(const.Items.StamDagger)
+local stamdagger2 = items.newOf(const.Items.StamDagger)
 
 local _ = tu.charsheet.equipment:swap(const.Slots.MainHand, stamdagger)
+local _ = tu.charsheet.equipment:swap(const.Slots.OffHand, stamdagger2)
 
 print("Spell Power:", tu.charsheet:spellPower(tu))
 
+tu.spellbook:learn(const.Spells.StartAttack)
 tu.spellbook:learn(const.Spells.FireBlast)
 tu.spellbook:learn(const.Spells.Pyroblast)
 
-print("Can cast Fire Blast:", tu:canCast(const.Spells.FireBlast))
-print("Casting Fire Blast:", tu:wantToCast(const.Spells.FireBlast) and "success" or "fail")
-print("Can cast Fire Blast:", tu:canCast(const.Spells.FireBlast))
-print("Skipping 1 second")
-env.UnreplicatedTimeTravel(1)
-print("Can cast Fire Blast:", tu:canCast(const.Spells.FireBlast))
-print("Casting Fire Blast:", tu:wantToCast(const.Spells.FireBlast) and "success" or "fail")
-print("Skipping 12 seconds")
-env.UnreplicatedTimeTravel(12)
-print("Can cast Fire Blast:", tu:canCast(const.Spells.FireBlast))
+print("Enemy Hp:", enemy.primaryResourceAmount)
+print("Casting Attack:", tu:wantToCast(const.Spells.StartAttack))
+print("Enemy Hp:", enemy.primaryResourceAmount)
+print("Skipping 5 seconds")
+env.UnreplicatedTimeTravel(5)
+print("Enemy Hp:", enemy.primaryResourceAmount)
 
 
 --> 51

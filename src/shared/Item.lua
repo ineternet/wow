@@ -49,4 +49,12 @@ function Item:mod(stat)
     return value
 end
 
+function Item:swingable()
+    return self:def().attacksPerSecond
+end
+
+function Item:swingTimeout()
+    return 1 / self:def().attacksPerSecond
+end
+
 return Item

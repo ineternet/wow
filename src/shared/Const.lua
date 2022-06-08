@@ -205,6 +205,8 @@ const = {
         item {
             name = "StamDagger",
             equipSlot = "MainHand",
+            dualWieldable = true,
+            attacksPerSecond = 1.5,
             flat = {
                 intellect = 4,
                 stamina = 5,
