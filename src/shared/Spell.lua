@@ -95,11 +95,11 @@ Spell.ApplyAura = function(spell, toUnit, aura, causer, auraData)
         if old then
             Spell.RemoveAuraInstance(toUnit, old)
         end
-    elseif overrideBehavior == AuraOverrideBehavior.Stack then
-        --TODO: Implement stacking when necessary
-        error("Stacking auras not implemented")
-    elseif overrideBehavior == AuraOverrideBehavior.StackDontUpdate then
-        error("Stacking auras not implemented")
+    elseif overrideBehavior == AuraOverrideBehavior.Stack or overrideBehavior == AuraOverrideBehavior.StackDontUpdate then
+        overrides.doNotCreateNewAura = true
+        overrides.updateOldAura = true
+        overrides.oldAura = toUnit:findFirstAura(aura)
+        auraData.stacks = (auraData.stacks or 0) + overrides.oldAura.stacks
     elseif overrideBehavior == AuraOverrideBehavior.DropThisApplication then
         if toUnit:hasAura(aura) then
             return
