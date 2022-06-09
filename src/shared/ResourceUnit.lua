@@ -1,3 +1,4 @@
+local ContextActionService = game:GetService("ContextActionService")
 setfenv(1, require(script.Parent.Global))
 
 local ResourceUnit = use"TargetUnit".inherit"ResourceUnit"
@@ -174,6 +175,20 @@ ResourceUnit.startOffHandSwing = function(self, after)
     end
 end
 
+ResourceUnit.stopMainHandSwing = function(self)
+    self.mainSwinging = false
+    if self.currentAction == Actions.Swing and not self.offSwinging then
+        self.currentAction = Actions.Idle
+    end
+end
+
+ResourceUnit.stopOffHandSwing = function(self)
+    self.offSwinging = false
+    if self.currentAction == Actions.Swing and not self.mainSwinging then
+        self.currentAction = Actions.Idle
+    end
+end
+
 ResourceUnit.getPool = function(self, resourceType)
     for _, pool in ipairs({
         "primaryResource",
@@ -281,7 +296,7 @@ ResourceUnit.hardCast = function(self, spell, spellTarget, spellLocation) --For 
             if spell.resourceCost then
                 self:deltaResourceAmount(spell.resource, -self:resolveRaw(spell.resource, resolveNumFn(spell.resourceCost, self.charsheet)))
             end
-            self.currentAction = Actions.Idle
+            self.currentAction = (self.mainSwinging or self.offSwinging) and Actions.Swing or Actions.Idle
             for order, effect in ipairs(spell.effects) do
                 if effect(spell, self, spellTarget, spellLocation) then
                     break
@@ -309,7 +324,7 @@ ResourceUnit.instantCast = function(self, spell, spellTarget, spellLocation) --F
     local thisSpellGcdEnd = utctime() + self.charsheet:gcd(self, spell.gcd or GCD.None)
 
     if not isMidCastCast then --If this is a mid-cast cast, preserve the old information
-        self.currentAction = Actions.Idle --We immediately go to idle because the cast is instant
+        self.currentAction = (self.mainSwinging or self.offSwinging) and Actions.Swing or Actions.Idle --We immediately go to idle because the cast is instant
         self.actionBegin = utctime()
         self.actionEnd = utctime() --Duh
         self.lastSpell = ref(spell)
@@ -336,7 +351,6 @@ ResourceUnit.passiveCast = function(self, spell, spellTarget, spellLocation) --F
     end
 
     for order, effect in ipairs(spell.effects) do
-        print("Passive cast effect:", effect)
         if effect(spell, self, spellTarget, spellLocation) then
             break
         end
@@ -432,6 +446,20 @@ ResourceUnit.targetUnit = function(self, otherUnit)
     self.target = ref(otherUnit)
 end
 
+ResourceUnit.startAttack = function(self, spellTarget)
+    self:targetUnit(spellTarget or self.target)
+    if self.currentAction == Actions.Swing then
+        return --Do not unnecessarily reset swing timer
+    end
+    self:startMainHandSwing(0)
+    self:startOffHandSwing(0.15)
+end
+
+ResourceUnit.stopAttack = function(self)
+    self:stopMainHandSwing()
+    self:stopOffHandSwing()
+end
+
 ResourceUnit.cast = function(self, spell, target, location)
     --We assume a previous function has checked if the spell is off cooldown
 
@@ -440,6 +468,16 @@ ResourceUnit.cast = function(self, spell, target, location)
 
     local target = target or self.target
     local location = location or self.location
+
+    --Even if the cast will fail, modify attack status if the spell requires it
+    --Mostly QoL, the point is to be able to initiate combat even when casting out of range
+    if spell.modifyAttack ~= nil then
+        if spell.modifyAttack then
+            self:startAttack(target)
+        else
+            self:stopAttack()
+        end
+    end
 
     --Check for cast type modifiers from auras
     --For example some passive procs will cause auras that turn some spells into instant casts.
@@ -531,23 +569,31 @@ ResourceUnit.tick = function(self, deltaTime)
 
     if self.currentAction == Actions.Swing then
         if self.mainSwinging then
-            self.mainSwingPassed = self.mainSwingPassed + deltaTime
-            local timeout = self.charsheet.equipment:get(Slots.MainHand):swingTimeout()
-            if self.mainSwingPassed >= timeout then
-                self.mainSwingPassed = self.mainSwingPassed - timeout
-                --damage
-                local dam = self.charsheet:totalMainHandDamage()
-                use"Spell".SchoolDamage(Spells.StartAttack, self, self.target, dam, Schools.Physical)
+            local facing = self:facing(self.target)
+            local los = self:los(self.target)
+            local inrange = self.target:distanceFrom(self.location) <= Range.Combat
+            if facing and los and inrange then --Remember swing timer when not facing for QoL
+                self.mainSwingPassed = self.mainSwingPassed + deltaTime
+                local timeout = self.charsheet.equipment:get(Slots.MainHand):swingTimeout()
+                if self.mainSwingPassed >= timeout then
+                    self.mainSwingPassed = self.mainSwingPassed - timeout
+                    local dam = self.charsheet:totalMainHandDamage()
+                    use"Spell".SchoolDamage(Spells.StartAttack, self, self.target, dam, Schools.Physical)
+                end
             end
         end
         if self.offSwinging then
-            self.offSwingPassed = self.offSwingPassed + deltaTime
-            local timeout = self.charsheet.equipment:get(Slots.OffHand):swingTimeout()
-            if self.offSwingPassed >= timeout then
-                self.offSwingPassed = self.offSwingPassed - timeout
-                --damage
-                local dam = self.charsheet:totalOffHandDamage()
-                use"Spell".SchoolDamage(Spells.StartAttack, self, self.target, dam, Schools.Physical)
+            local facing = self:facing(self.target)
+            local los = self:los(self.target)
+            local inrange = self.target:distanceFrom(self.location) <= Range.Combat
+            if facing and los and inrange then
+                self.offSwingPassed = self.offSwingPassed + deltaTime
+                local timeout = self.charsheet.equipment:get(Slots.OffHand):swingTimeout()
+                if self.offSwingPassed >= timeout then
+                    self.offSwingPassed = self.offSwingPassed - timeout
+                    local dam = self.charsheet:totalOffHandDamage()
+                    use"Spell".SchoolDamage(Spells.StartAttack, self, self.target, dam, Schools.Physical)
+                end
             end
         end
     end

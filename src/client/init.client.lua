@@ -192,5 +192,9 @@ game:GetService("UserInputService").InputBegan:Connect(function(io, gpc)
             --Arcane Intellect
             env.Remote:FireServer(env.Request.CastSpell, env.Spells.ArcaneIntellect.id)
         end
+    elseif io.UserInputType == Enum.UserInputType.MouseButton2 then
+        if io.UserInputState == Enum.UserInputState.Begin then
+            env.Remote:FireServer(env.Request.CastSpell, env.Spells.StartAttack.id)
+        end
     end
 end)

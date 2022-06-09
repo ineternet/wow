@@ -390,10 +390,12 @@ const = {
         Self = 0, --Self spells have no range
         Combat = 5, --Melee range
         ChargeMin = 8, --Minimum range for gap closer spells
-        CombatExtended = 15, --Extended melee range
+        CombatExtended = 8, --Extended melee range
         Charge = 25, --Melee gap closer range
         Short = 30,  --Reduced cast range
         Long = 40, --Default full cast range
+        VeryLong = 45, --Hunter range
+
         Unlimited = math.huge, --Unlimited range
     },
     NoResourceRegeneration = function() --Reuseable function for disabling resource regeneration

@@ -8,12 +8,6 @@ local function spellDummy(spell, castingUnit, spellTarget, spellLocation)
     return function() end --If this function returns "true", following effects will NOT be applied.
 end
 
-local function startAttack(spell, castingUnit, spellTarget, spellLocation)
-    castingUnit:targetUnit(spellTarget)
-    castingUnit:startMainHandSwing(0)
-    castingUnit:startOffHandSwing(0.15)
-end
-
 Spell.SchoolDamage = function(spell, castingUnit, spellTarget, damage, school, pvpModifier, forceCrit)
     local crit = forceCrit or castingUnit:procCrit(spell)
     local isPvp = spellTarget and spellTarget:is"PlayerUnit"
@@ -465,6 +459,8 @@ Spells.Fireball:assign({
     targetType = TargetType.Enemy,
     range = Range.Long,
 
+    modifyAttack = false,
+
     school = Schools.Fire,
     effects = {
         projectile {
@@ -546,6 +542,8 @@ Spells.Pyroblast:assign({
     castTime = 4.5,
     targetType = TargetType.Enemy,
     range = Range.Long,
+
+    modifyAttack = false,
 
     school = Schools.Fire,
     effects = {
@@ -634,6 +632,8 @@ Spells.Flamestrike:assign({
     areaSize = 5,
     range = Range.Long,
 
+    modifyAttack = false,
+
     school = Schools.Fire,
     effects = {
         area {
@@ -679,6 +679,8 @@ Spells.MortalStrike:assign({
     targetType = TargetType.Enemy,
     range = Range.Combat,
 
+    modifyAttack = true,
+
     school = Schools.Physical,
     effects = {
         schoolDamage {
@@ -716,6 +718,8 @@ Spells.FlashOfLight:assign({
     targetType = TargetType.Friendly,
     range = Range.Long,
 
+    modifyAttack = false,
+
     school = Schools.Holy,
     effects = {
         schoolHeal {
@@ -750,6 +754,8 @@ Spells.Corruption:assign({
     castTime = 2,
     targetType = TargetType.Enemy,
     range = Range.Long,
+
+    modifyAttack = false,
 
     school = Schools.Shadow,
     effects = {
@@ -822,6 +828,8 @@ Spells.Spellsteal:assign({
     targetType = TargetType.Enemy,
     range = Range.Combat,
 
+    modifyAttack = false,
+
     school = Schools.Arcane,
     effects = {
         ifKnowsSpell(Spells.Kleptomancy) {
@@ -850,10 +858,14 @@ Spells.StartAttack:assign({
     end,
 
     targetType = TargetType.Enemy,
-    range = Range.Combat,
+    range = Range.Unlimited,
+    losRequired = false,    --We can initiate attack without face or LOS,
+    facingRequired = false, --both are checked in the unit script.
+
+    modifyAttack = true,
 
     effects = {
-        startAttack
+        --startAttack
     }
 })
 

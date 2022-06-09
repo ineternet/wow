@@ -48,7 +48,6 @@ WorldUnit.los = function(self, pointOrUnit)
     return true
 end
 
-local facingInterval = math.rad(180) --How much of a cone is considered "in front" of the unit
 WorldUnit.facing = function(self, pointOrUnit)
     local point
     if type(pointOrUnit) == "table" then
@@ -60,12 +59,12 @@ WorldUnit.facing = function(self, pointOrUnit)
         point = pointOrUnit
     end
 
-    local relativeOrientation = math.atan2(point.Z - self.location.Z, point.X - self.location.X)
-    local face2 = facingInterval / 2
-    local fmin = self.orientation - face2
-    local fmax = self.orientation + face2
-
-    return relativeOrientation >= fmin and relativeOrientation <= fmax
+    local faceframe = CFrame.new(self.location) * CFrame.Angles(0, math.rad(self.orientation), 0)
+    local dirframe = CFrame.lookAt(self.location, point)
+    
+    return  (dirframe.LookVector - faceframe.LookVector).Magnitude
+            <
+            math.sqrt(2)
 end
 
 WorldUnit.tick = function(self, deltaTime)

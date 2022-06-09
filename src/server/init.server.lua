@@ -20,7 +20,8 @@ char:updateClassResources()
 char.primaryResourceAmount = char.primaryResourceMaximum
 char.secondaryResourceAmount = char.secondaryResourceMaximum
 
-char.spellbook:learn(const.Spells.HotStreak)
+char.charsheet.spellbook:learn(const.Spells.HotStreak)
+char.charsheet.spellbook:learn(const.Spells.StartAttack)
 
 local stamdagger = items.newOf(const.Items.StamDagger)
 
@@ -75,6 +76,17 @@ env.Remote.OnServerEvent:Connect(function(plr, action, arg)
         if not suc then
             print("Failed to cast spell: " .. msg)
         end
+    end
+end)
+
+game:GetService("RunService").Heartbeat:Connect(function(deltaTime)
+    if char and workspace:FindFirstChild("emojipasta") then
+        char.location = workspace.emojipasta.HumanoidRootPart.Position
+        char.orientation = workspace.emojipasta.HumanoidRootPart.Orientation.Y
+    end
+    if enemy and workspace:FindFirstChild("Dummy") then
+        enemy.location = workspace.Dummy.Torso.Position
+        enemy.orientation = workspace.Dummy.Torso.Orientation.Y
     end
 end)
 
