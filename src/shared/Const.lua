@@ -447,6 +447,10 @@ const = {
         Server = 0,
         Client = 1,
         Both = 2,
+    },
+    PartySize = {
+        Party = 5,
+        Raid = 40,
     }
 }
 

@@ -10,7 +10,7 @@ end
 
 Spell.SchoolDamage = function(spell, castingUnit, spellTarget, damage, school, pvpModifier, forceCrit)
     local crit = forceCrit or castingUnit:procCrit(spell)
-    local isPvp = spellTarget and spellTarget:is"PlayerUnit"
+    local isPvp = spellTarget and spellTarget:is"PlayerUnit" and castingUnit and castingUnit:is"PlayerUnit"
     if isPvp then
         damage = damage * (pvpModifier or 1)
     end
@@ -797,11 +797,12 @@ Spells.Spellsteal:assign({
         local str = "Remove "
         if sheet.spellbook:hasSpell(Spells.Kleptomancy) then
             str = str .. "all beneficial Magic effects from an enemy, gaining them for yourself."
-            str = str .. Linebreak .. "These effects will last a maximum of 2 min."
+            str = str .. Linebreak .. "These effects"
         else
             str = str .. "one beneficial Magic effect from an enemy, gaining it for yourself."
-            str = str .. Linebreak .. "The effect will last a maximum of 2 min."
+            str = str .. Linebreak .. "The effect"
         end
+        str = str .. " will last a maximum of 2 min."
         return str
     end,
     icon = "rbxassetid://1337",

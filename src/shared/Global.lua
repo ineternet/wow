@@ -67,6 +67,7 @@ end
 
 local otherHeartbeatConnections = {}
 local toUpdateObjects = {}
+local toGc = {}
 local function handleHeartbeat(dt)
     for _, ohc in pairs(otherHeartbeatConnections) do
         ohc(dt)
@@ -74,7 +75,9 @@ local function handleHeartbeat(dt)
 
     local count = 0
     for ref, obj in pairs(objectIndex) do
-        if obj.dirty then
+        if obj.gc then
+            toUpdateObjects[ref] = { gc = true }
+        elseif obj.dirty then
             local nt = {}
             for _, dirtyKey in ipairs(obj.dirtyKeys) do
                 if type(obj[dirtyKey]) == "table" and obj[dirtyKey].noproxy ~= nil then
@@ -289,7 +292,7 @@ end
 Global.using = function(strType, funcOnX, ...)
     local newobj = Global.use(strType).new(...)
     funcOnX(newobj)
-    newobj:Finalize()
+    Global.gc(newobj)
 end
 
 Global.assertObj = function(d)
@@ -374,6 +377,12 @@ else --For bindings only
         OnServerInvoke = void,
         OnClientInvoke = void,
     }
+end
+
+Global.gc = function(obj)
+    Global.assertObj(obj)
+    obj:Finalize()
+    rawset(obj, "gc", true)
 end
 
 Global.ConnectToHeartbeat = function(fn)

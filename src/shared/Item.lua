@@ -50,7 +50,7 @@ function Item:mod(stat)
 end
 
 function Item:swingable()
-    return self:def().attacksPerSecond
+    return self:def().attacksPerSecond and true or false
 end
 
 function Item:swingTimeout()
