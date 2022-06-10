@@ -74,9 +74,12 @@ local function handleHeartbeat(dt)
     end
 
     local count = 0
+    local gccount = 0
     for ref, obj in pairs(objectIndex) do
         if obj.gc then
             toUpdateObjects[ref] = { gc = true }
+            table.insert(toGc, ref)
+            gccount = gccount + 1
         elseif obj.dirty then
             local nt = {}
             for _, dirtyKey in ipairs(obj.dirtyKeys) do
@@ -93,10 +96,25 @@ local function handleHeartbeat(dt)
         end
     end
 
+    if gccount > 0 then
+        for _, ref in ipairs(toGc) do
+            objectIndex[ref] = nil
+        end
+        toGc = {}
+    end
+
     if count > 0 then
-        Global.Remote:FireAllClients(Request.FullObjectDelta, toUpdateObjects)
+        Global.Remote:FireAllClients(Request.FullObjectDelta, Global.compress(toUpdateObjects))
         toUpdateObjects = {}
     end
+end
+
+Global.compress = function(tab)
+    return tab
+end
+
+Global.decompress = function(tab)
+    return tab
 end
 
 if isServer then
@@ -116,7 +134,8 @@ local clientTypes = {
     Spell = true,
     Item = true,
     Aura = true,
-    Timer = true
+    Timer = true,
+    Effect = true,
 }
 
 Global.__MakeObject = function(ofType) --Create object. EVERY created object calls this.
@@ -200,6 +219,10 @@ local function setRefMt(obj)
 end
 
 Global.UpdateFromDelta = function(ref, obj)
+    if obj.gc then
+        objectIndex[ref] = nil
+        return true
+    end
     local existObj = objectIndex[ref]
     if existObj then
         for k, v in pairs(obj) do
@@ -277,6 +300,7 @@ end
 --Argument 1: Object array proxy
 --Argument 2: The object value to insert
 Global.replicatedInsert = function(tbl, val)
+    Global.assertObj(val)
     tbl[#tbl.noproxy + 1] = ref(val)
 end
 
@@ -296,7 +320,7 @@ Global.using = function(strType, funcOnX, ...)
 end
 
 Global.assertObj = function(d)
-    assert(d and type(d) == "table" and d.is, "expected (Object), got " .. type(d) .. " (missing 'is')" .. (type(d) == "string" and ", did you mean to write :is?" or ""))
+    assert(d and type(d) == "table" and d.is, "expected (Object), got " .. type(d) .. " (missing 'is')")
 end
 
 Global.assertIs = function(d, strType)

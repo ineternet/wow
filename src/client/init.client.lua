@@ -141,7 +141,7 @@ end)
 
 env.Remote.OnClientEvent:Connect(function(action, obj)
     if action == env.Request.FullObjectDelta then
-        for ref, obj in pairs(obj) do
+        for ref, obj in pairs(env.decompress(obj)) do
             if not env.UpdateFromDelta(ref, obj) then --Try to update existing object
                 --Object doesnt exist on this side.
                 --TODO: Create new object from new request
