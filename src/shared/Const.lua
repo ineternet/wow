@@ -279,7 +279,7 @@ const = {
         DiminishingReturns = 7,     --Ignore, but new duration is based on how many
                                     --times this or similar auras have been applied
                                     --in the last X seconds.
-        CreateStacksOrExtend = 8,   --Initially create a new aura with a defined amount of stacks.
+        CreateStacksOrPandemic = 8, --Initially create a new aura with a defined amount of stacks.
                                     --If an old aura is found, extend its duration, not adding any stacks.
     },
     DRGroup = { --Diminishing returns groups. Most of these are only in PVP.

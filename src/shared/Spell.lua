@@ -102,6 +102,17 @@ Spell.ApplyAura = function(spell, toUnit, aura, causer, auraData)
         end
     elseif overrideBehavior == AuraOverrideBehavior.DiminishingReturns then
         --Same as Ignore. TODO
+    elseif overrideBehavior == AuraOverrideBehavior.CreateStacksOrPandemic then
+        local old = toUnit:findFirstAura(aura, causer)
+        local pandemicDuration = math.clamp(
+            old and old:remainingTime() or 0, --If there is an old aura, apply its remaining time
+            0,
+            auraData.duration * 0.3 --up to 30% of the base duration.
+        )
+        overrides.duration = auraData.duration + pandemicDuration
+        if old then
+            Spell.RemoveAuraInstance(toUnit, old)
+        end
     end
 
     local auraInstance
