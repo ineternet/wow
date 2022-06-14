@@ -17,7 +17,8 @@ local const = habitat:require(root.Const)
 local env = habitat:require(root.Global)
 
 local tu = units.new()
-tu.charsheet.class = const.Classes.Mage
+tu.charsheet.class = const.Classes.Warlock
+tu.charsheet.spec = const.Specs.Affliction
 tu.charsheet.race = const.Races.Werebeast
 tu.charsheet.level = 17
 tu:updateClassResources()
@@ -49,15 +50,14 @@ tu.charsheet.spellbook:learn(const.Spells.FireBlast)
 tu.charsheet.spellbook:learn(const.Spells.Pyroblast)
 tu.charsheet.spellbook:learn(const.Spells.Spellsteal)
 tu.charsheet.spellbook:learn(const.Spells.Kleptomancy)
+tu.charsheet.spellbook:learn(const.Spells.Corruption)
 --ll.ApplyAura = function(spell, toUnit, aura, causer, auraData)
-env.use"Spell".ApplyAura(nil, enemy, const.Auras.ArcaneIntellect, nil, { duration = 60*60 })
-env.use"Spell".ApplyAura(const.Spells.Corruption, enemy, const.Auras.Corruption, tu, { duration = 60*60 })
+--env.use"Spell".ApplyAura(nil, enemy, const.Auras.ArcaneIntellect, nil, { duration = 60*60 })
+--env.use"Spell".ApplyAura(const.Spells.Corruption, enemy, const.Auras.Corruption, tu, { duration = 60*60 })
 
-print("Enemy Aura Num:   ", #enemy.auras.noproxy)
-print("Enemy Aura #1 Name:", enemy.auras.noproxy[1].aura.name)
-print("Caster Aura Num:", #tu.auras.noproxy)
-print("Caster Int:     ", tu.charsheet:intellect(tu))
-print("Casting Spellsteal:", tu:wantToCast(const.Spells.Spellsteal))
-print("Enemy Aura Num:   ", #enemy.auras.noproxy)
-print("Caster Aura Num:", #tu.auras.noproxy)
-print("Caster Int:     ", tu.charsheet:intellect(tu))
+print("Enemy HP:", enemy.primaryResourceAmount)
+print("Casting Corruption:", tu:wantToCast(const.Spells.Corruption))
+print("Enemy HP:", enemy.primaryResourceAmount)
+print("Skipping 5 seconds")
+env.UnreplicatedTimeTravel(5)
+print("Enemy HP:", enemy.primaryResourceAmount)

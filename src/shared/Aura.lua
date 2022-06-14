@@ -11,7 +11,7 @@ end
 
 local function schoolDot(school)
     return function(aura, deltaTime, owner, tickStrength)
-        use"Spell".SchoolDamage(aura.spellSource, aura.causer, owner, (aura.damage(aura.causer, aura.causer.charsheet) / aura.duration) * tickStrength, school, 1)
+        use"Spell".SchoolDamage(aura.spellSource, aura.causer, owner, (aura.aura.damagePerSecond(aura.causer, aura.causer.charsheet)) * tickStrength, school, 1)
     end
 end
 
@@ -238,19 +238,23 @@ Auras.Corruption:assign({
     decayType = AuraDecayType.Timed,
     override = AuraOverrideBehavior.Pandemic,
     affectedByCauserHaste = true,
+    damagePerSecond = function(caster, sheet)
+        return (1.1 / 18) * sheet:spellPower(caster)
+    end
 })
 
 Auras.Kicked = Aura.new()
 Auras.Kicked:assign({
     name = "Kicked",
     tooltip = function(sheet)
-        local str = "This unit has been kicked and cannot be healed."
+        local str = "School spell cast interrupted."
         return str
     end,
     icon = "rbxassetid://1337",
     effectType = AuraDispelType.None,
     auraType = AuraType.Hidden,
     decayType = AuraDecayType.Timed,
+    drGroup = DRGroup.Kick,
     override = AuraOverrideBehavior.DiminishingReturns,
 })
 

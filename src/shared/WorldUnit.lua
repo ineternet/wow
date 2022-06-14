@@ -7,10 +7,13 @@ local WorldUnit = use"Unit".inherit"WorldUnit"
 WorldUnit.new = Constructor(WorldUnit, {
     location = Vector3.new(),
     orientation = 0, --Y axis orientation in degrees
-    
 })
 
 WorldUnit.distanceFrom = function(self, pointOrUnit)
+    if _VERSION ~= "Luau" then
+        return 0
+    end
+
     --TODO: decide if elevation should be included
     local point
     if type(pointOrUnit) == "table" then
@@ -31,6 +34,10 @@ WorldUnit.distanceFrom = function(self, pointOrUnit)
 end
 
 WorldUnit.los = function(self, pointOrUnit)
+    if _VERSION ~= "Luau" then
+        return true
+    end
+
     local point
     if type(pointOrUnit) == "table" then
         assertObj(pointOrUnit)
@@ -49,6 +56,10 @@ WorldUnit.los = function(self, pointOrUnit)
 end
 
 WorldUnit.facing = function(self, pointOrUnit)
+    if _VERSION ~= "Luau" then
+        return true
+    end
+
     local point
     if type(pointOrUnit) == "table" then
         assertObj(pointOrUnit)
@@ -61,14 +72,13 @@ WorldUnit.facing = function(self, pointOrUnit)
 
     local faceframe = CFrame.new(self.location) * CFrame.Angles(0, math.rad(self.orientation), 0)
     local dirframe = CFrame.lookAt(self.location, point)
-    
+
     return  (dirframe.LookVector - faceframe.LookVector).Magnitude
             <
             math.sqrt(2)
 end
 
 WorldUnit.tick = function(self, deltaTime)
-    
     WorldUnit.super.tick(self, deltaTime)
 end
 

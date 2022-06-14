@@ -100,6 +100,8 @@ Spell.ApplyAura = function(spell, toUnit, aura, causer, auraData)
         if toUnit:hasAura(aura, causer) then
             return
         end
+    elseif overrideBehavior == AuraOverrideBehavior.DiminishingReturns then
+        --Same as Ignore. TODO
     end
 
     local auraInstance
@@ -258,14 +260,14 @@ local function projectile(args)
         local spd = 0.5
         --fb.AlignOrientation
         fb.Velocity = (goal - start) / spd
-        task.wait(spd)
+        wait(spd)
         local fn = args.onArriveWorldModel
         if fn then
             fn(workspace.Dummy)
         end
         fb.Anchored = true
         fb.Transparency = 1
-        task.delay(2, function()
+        delay(2, function()
             fb:Destroy()
         end)
     end
@@ -318,7 +320,7 @@ local function ifSpecAndLevel(spec, level)
             local effect = args.effect or args[1]
             local compoundReturn = false
 
-            if castingUnit.sheet.spec == spec and castingUnit.sheet.level >= level then
+            if castingUnit.charsheet.spec == spec and castingUnit.charsheet.level >= level then
                 compoundReturn = args.dropFollowingEffects
                 compoundReturn = effect(spell, castingUnit, spellTarget, spellLocation) or compoundReturn
             end
@@ -753,7 +755,12 @@ Spells.Corruption:assign({
     cooldown = 0,
     gcd = GCD.Standard,
 
-    castType = CastType.Casting,
+    castType = function(sheet)
+        if sheet.spec == Specs.Affliction and sheet.level >= 4 then
+            return CastType.Instant
+        end
+        return CastType.Casting
+    end,
     castTime = 2,
     targetType = TargetType.Enemy,
     range = Range.Long,
@@ -845,8 +852,7 @@ Spells.Spellsteal:assign({
         },
         spellSteal {
             dispelType = AuraDispelType.Magic,
-            dispelMode = DispelMode.SpecificAmount,
-            amount = 1,
+            dispelMode = DispelMode.Latest
         },
     },
 })

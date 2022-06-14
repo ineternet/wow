@@ -291,7 +291,7 @@ ResourceUnit.hardCast = function(self, spell, spellTarget, spellLocation) --For 
     end
     local castDuration = self.actionEnd - utctime()
     castDuration = castDuration / (1 + self.charsheet:haste(self))
-    task.delay(castDuration, function()
+    delay(castDuration, function()
         if not interrupted then
             if spell.resourceCost then
                 self:deltaResourceAmount(spell.resource, -self:resolveRaw(spell.resource, resolveNumFn(spell.resourceCost, self.charsheet)))
@@ -522,7 +522,7 @@ ResourceUnit.cast = function(self, spell, target, location)
         [CastType.Channeled] = ResourceUnit.channelCast,
         [CastType.Casting]    = ResourceUnit.hardCast,
         [CastType.Passive] = ResourceUnit.passiveCast,
-    })[casttype](self, spell, target, location)
+    })[resolveNumFn(casttype, self.charsheet)](self, spell, target, location)
 
     self.charsheet.spellbook:postCast(spell, self)
 
