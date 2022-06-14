@@ -80,7 +80,7 @@ end
 local QueryHandler = {
     RemoveThisAura = function(dispelMode)
         return function(self, unit)
-            use"Spell".RemoveAura(unit, self.aura, dispelMode)
+            use"Spell".RemoveAura(unit, self.aura, dispelMode, nil, nil, nil, self.causer)
         end
     end
 }

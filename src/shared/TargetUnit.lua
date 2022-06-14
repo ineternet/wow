@@ -16,13 +16,17 @@ TargetUnit.new = Constructor(TargetUnit, {
     --self.charsheet.unit = ref(self)
 end)
 
-TargetUnit.hasAura = function(self, auradef)
-    return self:findFirstAura(auradef) ~= nil
+TargetUnit.hasAura = function(self, auradef, byCauser)
+    return self:findFirstAura(auradef, byCauser) ~= nil
 end
 
-TargetUnit.findFirstAura = function(self, auradef)
+TargetUnit.findFirstAura = function(self, auradef, byCauser)
+    assertObj(auradef)
+    auradef:assertIs("Aura")
+    assert(byCauser == nil or (byCauser.is and byCauser:is("Unit")), "byCauser must be a unit or nil")
+
     for i, aura in ipairs(self.auras.noproxy) do
-        if aura.aura.id == auradef.id and not aura.invalidate then
+        if aura.aura.id == auradef.id and not aura.invalidate and (byCauser and aura.causer and aura.causer:ReferenceEquals(byCauser)) then
             return aura
         end
     end

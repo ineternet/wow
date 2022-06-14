@@ -73,13 +73,15 @@ Spell.ApplyAura = function(spell, toUnit, aura, causer, auraData)
     if overrideBehavior == AuraOverrideBehavior.Ignore then
         --Do nothing
     elseif overrideBehavior == AuraOverrideBehavior.ClearOldApplyNew then
-        Spell.RemoveAura(toUnit, aura, DispelMode.All)
+        Spell.RemoveAura(toUnit, aura, DispelMode.All, nil, nil, nil, causer)
     elseif overrideBehavior == AuraOverrideBehavior.UpdateOldDuration then
+        overrides.oldAura = toUnit:findFirstAura(aura, causer)
         overrides.doNotCreateNewAura = true
-        overrides.updateOldAura = true
-        overrides.oldAura = toUnit:findFirstAura(aura)
+        if overrides.oldAura then
+            overrides.updateOldAura = true
+        end
     elseif overrideBehavior == AuraOverrideBehavior.Pandemic then
-        local old = toUnit:findFirstAura(aura)
+        local old = toUnit:findFirstAura(aura, causer)
         local pandemicDuration = math.clamp(
             old and old:remainingTime() or 0, --If there is an old aura, apply its remaining time
             0,
@@ -95,7 +97,7 @@ Spell.ApplyAura = function(spell, toUnit, aura, causer, auraData)
         overrides.oldAura = toUnit:findFirstAura(aura)
         auraData.stacks = (auraData.stacks or 0) + overrides.oldAura.stacks
     elseif overrideBehavior == AuraOverrideBehavior.DropThisApplication then
-        if toUnit:hasAura(aura) then
+        if toUnit:hasAura(aura, causer) then
             return
         end
     end
@@ -133,7 +135,7 @@ local function applyAura(args)
     end
 end
 
-Spell.RemoveAura = function(fromUnit, auraOrArg, dispelMode, specificAmount, removalMode, onlyRemoveThisType)
+Spell.RemoveAura = function(fromUnit, auraOrArg, dispelMode, specificAmount, removalMode, onlyRemoveThisType, onlyCausedByThisUnit)
     if not dispelMode then
         dispelMode = DispelMode.All
     end
@@ -150,6 +152,7 @@ Spell.RemoveAura = function(fromUnit, auraOrArg, dispelMode, specificAmount, rem
         or (removalMode == AuraRemovalMode.ByDispelType and auraInstance.aura.effectType == auraOrArg and auraOrArg ~= nil)
         or (removalMode == AuraRemovalMode.ByAura and auraInstance.aura == auraOrArg)) --Avoid using this mode, it does not work across sides
         and (not onlyRemoveThisType or auraInstance.aura.auraType == onlyRemoveThisType)
+        and (not onlyCausedByThisUnit or auraInstance.causer and auraInstance.causer == onlyCausedByThisUnit)
         then
             if dispelMode ~= DispelMode.Latest then
                 markedForRemoval[i] = true
@@ -229,7 +232,7 @@ end
 
 local function removeAura(args)
     return function(spell, castingUnit, spellTarget, _)
-        Spell.RemoveAura(spellTarget, args.aura, args.dispelMode)
+        Spell.RemoveAura(spellTarget, args.aura, args.dispelMode, args.amount, args.removalMode, args.removeType, args.causedByCasterOnly and castingUnit or args.causedByTargetOnly and spellTarget or nil)
     end
 end
 
@@ -500,7 +503,7 @@ Spells.HotStreak:assign({
             effect = multi {
                 removeAura { --Remove Heating Up
                     aura = Auras.HeatingUp,
-                    dispelMode = DispelMode.All,
+                    dispelMode = DispelMode.All
                 },
                 applyAura {
                     aura = Auras.HotStreak,
