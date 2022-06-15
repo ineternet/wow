@@ -26,7 +26,11 @@ TargetUnit.findFirstAura = function(self, auradef, byCauser)
     assert(byCauser == nil or (byCauser.is and byCauser:is("Unit")), "byCauser must be a unit or nil")
 
     for i, aura in ipairs(self.auras.noproxy) do
-        if aura.aura.id == auradef.id and not aura.invalidate and (byCauser and aura.causer and aura.causer:ReferenceEquals(byCauser)) then
+        local cond = true
+        if byCauser then
+            cond = aura.causer and aura.causer:ReferenceEquals(byCauser)
+        end
+        if aura.aura.id == auradef.id and not aura.invalidate and cond then
             return aura
         end
     end

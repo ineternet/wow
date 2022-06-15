@@ -87,10 +87,16 @@ Spell.ApplyAura = function(spell, toUnit, aura, causer, auraData)
             0,
             auraData.duration * 0.3 --up to 30% of the base duration.
         )
-        overrides.duration = auraData.duration + pandemicDuration
         if old then
-            Spell.RemoveAuraInstance(toUnit, old)
+            overrides.doNotCreateNewAura = true
+            overrides.updateOldAura = true
+            overrides.oldAura = old
         end
+        auraData.elapsedPart = old and (old.elapsedPart - old.trulyElapsedPart) or 0
+        auraData.duration = auraData.duration + pandemicDuration
+        --if old then
+        --    Spell.RemoveAuraInstance(toUnit, old)
+        --end
     elseif overrideBehavior == AuraOverrideBehavior.Stack or overrideBehavior == AuraOverrideBehavior.StackDontUpdate then
         overrides.doNotCreateNewAura = true
         overrides.updateOldAura = true

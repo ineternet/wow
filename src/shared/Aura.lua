@@ -51,6 +51,7 @@ AuraInstance.tick = function(self, deltaTime, owner)
             partialTick = (1 - nextLogicalTick) * ticks
         end
         if self.elapsedPart >= nextLogicalTick then
+            self.trulyElapsedPart = self.elapsedPart
             self.remainingTicks = self.remainingTicks - 1
             self.aura.onTick(self, deltaTime, owner, partialTick)
         end
@@ -87,7 +88,14 @@ local QueryHandler = {
 
 
 local logicalIncrement = 0
-AuraInstance.new = Constructor(AuraInstance, {})
+AuraInstance.new = Constructor(AuraInstance, {
+    elapsedPart = 0,
+    trulyElapsedPart = 0,
+    duration = math.huge,
+    aura = nil,
+    causer = nil,
+    spellSource = nil,
+})
 Aura.new = Constructor(Aura, {
     effectType = AuraDispelType.None, --Default effect type is none.
 }, function(self)
