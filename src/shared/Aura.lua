@@ -11,7 +11,7 @@ end
 
 local function schoolDot(school)
     return function(aura, deltaTime, owner, tickStrength)
-        use"Spell".SchoolDamage(aura.spellSource, aura.causer, owner, (aura.aura.damagePerSecond(aura.causer, aura.causer.charsheet)) * tickStrength, school, 1)
+        use"Spell".SchoolDamage(aura.spellSource, aura.causer, owner, (aura.aura.damagePerSecond(aura.causer, aura.causer.charsheet, aura)) * tickStrength, school, 1)
     end
 end
 
@@ -248,6 +248,34 @@ Auras.Corruption:assign({
     affectedByCauserHaste = true,
     damagePerSecond = function(caster, sheet)
         return (1.1 / 18) * sheet:spellPower(caster)
+    end
+})
+
+Auras.Agony = Aura.new()
+Auras.Agony:assign({
+    name = "Agony",
+    tooltip = function(sheet)
+        local str = "Suffering %s Shadow damage every %s."
+        return str
+    end,
+    onTick = function(aura, deltaTime, owner, tickStrength)
+        local maxstacks = 12
+        if aura.causer.charsheet.spellbook:hasSpell(Spells.WritheInAgony) then
+            maxstacks = 18
+        end
+        if tickStrength >= 1 and aura.stacks < maxstacks then
+            aura.stacks = aura.stacks + 1
+        end
+        schoolDot(Schools.Shadow)(aura, deltaTime, owner, tickStrength)
+    end,
+    icon = "rbxassetid://1337",
+    effectType = AuraDispelType.Curse,
+    auraType = AuraType.Debuff,
+    decayType = AuraDecayType.Timed,
+    override = AuraOverrideBehavior.Pandemic,
+    affectedByCauserHaste = true,
+    damagePerSecond = function(caster, sheet, auraInstance)
+        return (0.2 / 18) * auraInstance.stacks * sheet:spellPower(caster)
     end
 })
 

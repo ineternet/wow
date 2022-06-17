@@ -453,6 +453,12 @@ const = {
     PartySize = {
         Party = 5,
         Raid = 40,
+    },
+    TalentChoice = {
+        Unassigned = 0,
+        Left = 1,
+        Middle = 2,
+        Right = 3,
     }
 }
 

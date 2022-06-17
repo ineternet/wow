@@ -91,6 +91,7 @@ Spell.ApplyAura = function(spell, toUnit, aura, causer, auraData)
             overrides.doNotCreateNewAura = true
             overrides.updateOldAura = true
             overrides.oldAura = old
+            overrides.stacks = old.stacks or nil
         end
         auraData.elapsedPart = old and (old.elapsedPart - old.trulyElapsedPart) or 0
         auraData.duration = auraData.duration + pandemicDuration
@@ -134,7 +135,7 @@ Spell.ApplyAura = function(spell, toUnit, aura, causer, auraData)
             if overrides[k] then
                 auraInstance[k] = overrides[k]
             else
-                auraInstance[k] = v
+                auraInstance[k] = resolveNumFn(v, causer.charsheet)
             end
         end
         if causer then
@@ -803,6 +804,52 @@ Spells.Corruption:assign({
     },
 })
 
+Spells.Agony = Spell.new()
+Spells.Agony:assign({
+    name = "Agony",
+    tooltip = function(sheet)
+        local str = "The target writhes in agony, causing %s Shadow damage over %s seconds. Damage ramps up over time."
+        str = str .. Linebreak .. "Agony damage has a chance to generate a Soul Shard."
+        return str
+    end,
+    icon = "rbxassetid://1337",
+    resource = Resources.Mana,
+    resourceCost = 0.01,
+    cooldown = 0,
+    gcd = GCD.Standard,
+    castType = CastType.Instant,
+    targetType = TargetType.Enemy,
+    range = Range.Long,
+    modifyAttack = false,
+    school = Schools.Shadow,
+    effects = {
+        applyAura {
+            aura = Auras.Agony,
+            auraData = {
+                duration = 18,
+                stacks = function(sheet)
+                    if sheet.spellbook:hasSpell(Spells.WritheInAgony) then
+                        return 4
+                    end
+                    return 1
+                end,
+            },
+        },
+    },
+})
+
+Spells.WritheInAgony = Spell.new()
+Spells.WritheInAgony:assign({
+    name = "Writhe in Agony",
+    tooltip = function(sheet)
+        local str = "Agony starts at 4 stacks and may ramp up to 18 stacks."
+        return str
+    end,
+    icon = "rbxassetid://1337",
+    castType = CastType.Passive,
+    school = Schools.Physical
+})
+
 Spells.Kleptomancy = Spell.new()
 Spells.Kleptomancy:assign({
     name = "Kleptomancy",
@@ -811,9 +858,7 @@ Spells.Kleptomancy:assign({
         return str
     end,
     icon = "rbxassetid://1337",
-
     castType = CastType.Passive,
-
     school = Schools.Physical,
 })
 
