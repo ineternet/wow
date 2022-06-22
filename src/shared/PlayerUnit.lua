@@ -10,8 +10,16 @@ PlayerUnit.new = Constructor(PlayerUnit, {
     party = nil, -- Ref to party object
 
     xp = 0, --TOTAL accumulated XP
-}, function(self, player)
+
+    talents = use"TalentTree".new,
+
+    unit = use"ResourceUnit".new,
+}, function(self, player, dbEntry)
     self.player = player
+    self.talents:Deserialize(dbEntry.talents)
+    self.unit:Deserialize(dbEntry.unit)
+    self.xp = dbEntry.xp
+    self.unit.charsheet:Deserialize(dbEntry.charsheet)
 end)
 
 PlayerUnit.gainXp = function(self, xp)
