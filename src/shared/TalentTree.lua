@@ -4,6 +4,16 @@ local TalentTree = use"Object".inherit"TalentTree"
 
 --Represents the talents a player has selected.
 
+TalentTree.ClassTalentTrees = {
+    [Classes.Warrior] = {
+        level10 = {
+            [TalentChoice.Left] = Spells.Spell,
+            [TalentChoice.Middle] = Spells.Spell,
+            [TalentChoice.Right] = Spells.Spell,
+        }
+    }
+}
+
 TalentTree.new = Constructor(TalentTree, {
     level10 = TalentChoice.Unassigned,
     level15 = TalentChoice.Unassigned,
