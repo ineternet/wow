@@ -44,14 +44,13 @@ function Equipment:aggregate(stat)
             base = base + item:flat(stat)
         end
     end
-    local percentage = 1
+    local mod = 1
     for _, item in pairs(self.slots.noproxy) do
-        if item and item:def() and item:def().percentage and item:def().percentage[stat] then
-            percentage = percentage * item:percentage(stat)
+        if item and item:def() and item:def().mod and item:def().mod[stat] then
+            mod = mod * item:mod(stat)
         end
     end
-    base = base * percentage
-    return base
+    return base, mod
 end
 
 function Equipment:swap(slot, newItem)

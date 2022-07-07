@@ -29,6 +29,10 @@ Item.newOfId = function(id)
     return newItem
 end
 
+Item.applyEnchantment = function(self, enchant)
+    self.enchant = enchant
+end
+
 function Item:def()
     return Items[self.itemId]
 end

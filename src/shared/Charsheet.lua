@@ -1,7 +1,7 @@
 setfenv(1, require(script.Parent.Global))
 
 local Charsheet = use"Object".inherit"Charsheet"
-local Charclass = require(script.Parent.Charclass)
+--local Charclass = require(script.Parent.Charclass)
 
 --Stat def for unit type (paper doll)
 
@@ -66,14 +66,15 @@ end
 for _, primStat in ipairs({"strength", "stamina", "agility", "intellect"}) do
     Charsheet[primStat] = function(self, unit)
         local classBase = math.round(BasePrimaryStat(primStat, self.level, self.class, self.race))
-        local gearBase = self.equipment:aggregate(primStat)
+        local gearBase, gearMod = self.equipment:aggregate(primStat)
         local auraMod = unit:auraStatMod(primStat)
-        return (classBase + gearBase) * auraMod
+        return (classBase + gearBase) * gearMod * auraMod
     end
 end
 
 Charsheet.attackPower = function(self, unit)
-    local value = math.round(self.equipment:aggregate("attackPower"))
+    local gbase, gmod = self.equipment:aggregate("attackPower")
+    local value = math.round(gbase * gmod)
     if self:isStrengthSpec() then
         value = value + self:strength(unit)
     end
@@ -91,7 +92,8 @@ Charsheet.attackPower = function(self, unit)
 end
 
 Charsheet.spellPower = function(self, unit)
-    local value = math.round(self.equipment:aggregate("spellPower")) + self:intellect(unit)
+    local gbase, gmod = self.equipment:aggregate("spellPower")
+    local value = math.round(gbase * gmod) + self:intellect(unit)
     if self.spec == Specs.Crusader then
         value = self:abilityDamage(true) * 1.01
     end
@@ -128,7 +130,8 @@ local function diminish(x)
     return x - x * (math.exp(0.1 * x) - 1)
 end
 Charsheet.diminishSecondaryStat = function(self, stat)
-    local rating = math.round(self.equipment:aggregate(stat))
+    local gbase, gmod = self.equipment:aggregate(stat)
+    local rating = math.round(gbase * gmod)
     local pctStat = (rating / SecondaryRatingConversion[stat][self.level]) * 0.01
     return diminish(pctStat) * 100
 end
@@ -160,8 +163,9 @@ end
 Charsheet.armor = function(self, unit)
     local aAuraFlat = unit:auraStatFlat("armor")
     local aAuraMod = unit:auraStatMod("armor")
-    local base = math.round(self.equipment:aggregate("armor") + 2 * self:agility(unit))
-    local value = (base * aAuraMod) + aAuraFlat
+    local baseArmor, modArmor = self.equipment:aggregate("armor")
+    local base = math.round((baseArmor) + 2 * self:agility(unit))
+    local value = (base * modArmor * aAuraMod) + aAuraFlat
     return value
 end
 

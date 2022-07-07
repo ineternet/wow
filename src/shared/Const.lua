@@ -297,7 +297,7 @@ const = {
     Enchants = { --IDs are indices of this table (i.e. auto-increment)
         MinorStamina = enchant {
             mod = {
-                stamina = 0.01
+                stamina = 0.1
             }
         }
     },

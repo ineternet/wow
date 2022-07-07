@@ -52,7 +52,10 @@ local stamdagger2 = items.newOf(const.Items.StamDagger)
 local _ = tu.charsheet.equipment:swap(const.Slots.MainHand, stamdagger)
 local _ = tu.charsheet.equipment:swap(const.Slots.OffHand, stamdagger2)
 
-print("Spell Power:", tu.charsheet:spellPower(tu))
+print("Stamina before:", tu.charsheet:stamina(tu))
+stamdagger:applyEnchantment(const.Enchants.MinorStamina)
+print("Stamina after:", tu.charsheet:stamina(tu))
+
 
 tu.charsheet.spellbook:learn(const.Spells.StartAttack)
 tu.charsheet.spellbook:learn(const.Spells.FireBlast)
