@@ -399,6 +399,7 @@ const = {
         VeryLong = 45, --Hunter range
 
         Unlimited = math.huge, --Unlimited range
+        Anywhere = math.huge,
     },
     NoResourceRegeneration = function() --Reuseable function for disabling resource regeneration
         return 0
@@ -459,6 +460,15 @@ const = {
         Left = 1,
         Middle = 2,
         Right = 3,
+    },
+    TalentTier = {
+        Level10 = 10,
+        Level15 = 15,
+        Level25 = 25,
+        Level35 = 35,
+        Level45 = 45,
+        Level50 = 50,
+        Level55 = 55,
     }
 }
 

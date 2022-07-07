@@ -12,11 +12,20 @@ local root = habitat:loadFromFs("src/shared", {
 root.Parent = ReplicatedStorage
 --End Environment setup code
 local units = habitat:require(root.ResourceUnit)
+local playerdesc = habitat:require(root.PlayerDesc)
+local playerunits = habitat:require(root.PlayerUnit)
 local items = habitat:require(root.Item)
 local const = habitat:require(root.Const)
 local env = habitat:require(root.Global)
 
-local tu = units.new()
+local plr = playerdesc.new(nil, "", {
+    xp = 0,
+    talents = {
+
+    },
+})
+
+local tu = playerunits.new(nil, plr)
 tu.charsheet.class = const.Classes.Warlock
 tu.charsheet.spec = const.Specs.Affliction
 tu.charsheet.race = const.Races.Werebeast
@@ -52,10 +61,11 @@ tu.charsheet.spellbook:learn(const.Spells.Spellsteal)
 tu.charsheet.spellbook:learn(const.Spells.Kleptomancy)
 tu.charsheet.spellbook:learn(const.Spells.Corruption)
 tu.charsheet.spellbook:learn(const.Spells.Agony)
-tu.charsheet.spellbook:learn(const.Spells.WritheInAgony)
---ll.ApplyAura = function(spell, toUnit, aura, causer, auraData)
 --env.use"Spell".ApplyAura(nil, enemy, const.Auras.ArcaneIntellect, nil, { duration = 60*60 })
 --env.use"Spell".ApplyAura(const.Spells.Corruption, enemy, const.Auras.Corruption, tu, { duration = 60*60 })
+
+--Writhe in Agony
+tu.player.talents:change(tu.charsheet, const.TalentTier.Level10, const.TalentChoice.Left)
 
 print("Enemy HP:", enemy.primaryResourceAmount)
 print("Casting Agony:", tu:wantToCast(const.Spells.Agony))

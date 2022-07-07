@@ -899,7 +899,7 @@ Spells.Spellsteal:assign({
 
     castType = CastType.Instant,
     targetType = TargetType.Enemy,
-    range = Range.Combat,
+    range = Range.Long,
 
     modifyAttack = false,
 
@@ -919,6 +919,56 @@ Spells.Spellsteal:assign({
     },
 })
 
+Spells.ImprovedBlock = Spell.new()
+Spells.ImprovedBlock:assign({
+    name = "Block Succession",
+    tooltip = function(sheet)
+        local str = "After you critical block an attack, increase your Block by %s%% for %s seconds."
+        return str
+    end,
+    icon = "rbxassetid://1337",
+    castType = CastType.Passive,
+    school = Schools.Physical,
+})
+
+Spells.ImprovedShieldBash = Spell.new()
+Spells.ImprovedShieldBash:assign({
+    name = "Counter Bash",
+    tooltip = function(sheet)
+        local str = "Shield Bash has a %s%% chance to regain a charge after blocking an attack."
+        return str
+    end,
+    icon = "rbxassetid://1337",
+    castType = CastType.Passive,
+    school = Schools.Physical,
+})
+
+Spells.ShieldWall = Spell.new()
+Spells.ShieldWall:assign({
+    name = "Shield Wall",
+    tooltip = function(sheet)
+        local str = "Ready your shield, reducing damage taken from attacks by %s%% for %s seconds."
+        return str
+    end,
+    icon = "rbxassetid://1337",
+    
+    gcd = GCD.Standard,
+    cooldown = 25,
+    castType = CastType.Instant,
+    targetType = TargetType.Self,
+    range = Range.Self,
+
+    school = Schools.Physical,
+    effects = {
+        applyAura {
+            aura = Auras.ShieldWall,
+            auraData = {
+                duration = 6,
+            },
+        },
+    }
+})
+
 Spells.StartAttack = Spell.new()
 Spells.StartAttack:assign({
     name = "Attack",
@@ -936,9 +986,9 @@ Spells.StartAttack:assign({
 
     modifyAttack = true,
 
-    effects = {
+    --[[effects = {
         --startAttack
-    }
+    }]]
 })
 
 return Spell

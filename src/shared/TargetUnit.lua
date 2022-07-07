@@ -11,12 +11,13 @@ TargetUnit.new = Constructor(TargetUnit, {
     auras = {},
 
     charsheet = use"Charsheet".new,
-}, function(self)
-    --self.charsheet = ref(use"Charsheet".new())
-    --self.charsheet.unit = ref(self)
-end)
+})
 
 TargetUnit.hasAura = function(self, auradef, byCauser)
+    assertObj(auradef)
+    auradef:assertIs("Aura")
+    assert(byCauser == nil or (byCauser.is and byCauser:is("Unit")), "byCauser must be a unit or nil")
+
     return self:findFirstAura(auradef, byCauser) ~= nil
 end
 
