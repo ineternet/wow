@@ -215,6 +215,13 @@ const = {
                 --haste = 300,
                 --crit = 300,
             }
+        },
+        item {
+            name = "HasteRing",
+            equipSlot = "Ring",
+            flat = {
+                haste = 30,
+            }
         }
     }, {
         __index = function(t, k)

@@ -304,6 +304,48 @@ Global.replicatedInsert = function(tbl, val)
     tbl[#tbl.noproxy + 1] = ref(val)
 end
 
+Global.replicatedFindIndex = function(tbl, obj)
+    local idx = nil
+    for i, e in ipairs(tbl.noproxy) do
+        if e:ReferenceEquals(obj) then
+            idx = i
+            break
+        end
+    end
+
+    if not idx then
+        return nil
+    end
+
+    return idx
+end
+
+--Argument 1: Object array proxy
+--Argument 2: List of indices to remove
+Global.replicatedUnindex = function(tbl, markedForRemoval)
+    if #markedForRemoval == 0 then
+        return
+    end
+    
+    local shift = 0
+    local fTop = #tbl.noproxy
+    for i = 1, fTop+1 do
+        if markedForRemoval[i-1] then
+            shift = shift + 1
+        end
+        if shift > 0 then
+            tbl[i-shift] = tbl[i]
+        end
+    end
+    for i = fTop-shift+1, fTop do
+        tbl[i] = nil
+    end
+end
+
+Global.replicatedRemove = function(tbl, obj)
+    Global.replicatedUnindex(tbl, {Global.replicatedFindIndex(tbl, obj)})
+end
+
 Global.use = function(strType)
     local ftype = typeIndex[strType]
     if not ftype then

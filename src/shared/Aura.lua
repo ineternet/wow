@@ -11,7 +11,12 @@ end
 
 local function schoolDot(school)
     return function(aura, deltaTime, owner, tickStrength)
-        use"Spell".SchoolDamage(aura.spellSource, aura.causer, owner, (aura.aura.damagePerSecond(aura.causer, aura.causer.charsheet, aura)) * tickStrength, school, 1)
+        local damage = (aura.aura.damagePerSecond(aura.causer, aura.causer.charsheet, aura)) * tickStrength
+        local result = use"Spell".SchoolDamage(aura.spellSource, aura.causer, owner, damage, school, 1)
+
+        if result.finalDamage and result.finalDamage > 0 then
+            aura.causer.charsheet.spellbook:onDealDamage(aura.causer, owner, result.finalDamage, school, aura)
+        end
     end
 end
 
@@ -29,7 +34,7 @@ AuraInstance.tick = function(self, deltaTime, owner)
     and self.causer
     and self.causer.charsheet
     and self.causer.charsheet.haste then
-        hasted = 1 + self.causer.charsheet:haste(owner)
+        hasted = 1 + self.causer.charsheet:haste(self.causer)
     end
 
     
@@ -64,7 +69,17 @@ AuraInstance.remainingTime = function(self)
     if not self.duration then --We assume unset duration means the aura is permanent
         return math.huge
     end
-    return self.duration * (1 - self.elapsedPart)
+    --The remaining time can only be approximated because changing haste mid-aura will change the time
+    local hasteMod = 1
+    if self.aura.affectedByCauserHaste
+    and self.causer
+    and self.causer.charsheet
+    and self.causer.charsheet.haste then
+        hasteMod = 1 + self.causer.charsheet:haste(self.causer)
+    end
+
+    return (self.duration * (1 - self.elapsedPart)) --This much base duration left (no haste)
+            / hasteMod                              --Adjust for haste
 end
 
 Aura.createInstance = function(self)
@@ -261,11 +276,14 @@ Auras.Agony:assign({
     onTick = function(aura, deltaTime, owner, tickStrength)
         local maxstacks = 12
         if aura.causer.charsheet.spellbook:hasSpell(Spells.WritheInAgony) then
+            --Writhe in Agony talent
             maxstacks = 18
         end
         if tickStrength >= 1 and aura.stacks < maxstacks then
+            --Ramp up damage
             aura.stacks = aura.stacks + 1
         end
+        --TODO: Just make one DoT function for each school
         schoolDot(Schools.Shadow)(aura, deltaTime, owner, tickStrength)
     end,
     icon = "rbxassetid://1337",

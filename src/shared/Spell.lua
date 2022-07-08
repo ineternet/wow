@@ -45,6 +45,9 @@ local function schoolDamage(args)
         if result.crit then
             castingUnit.charsheet.spellbook:onSpellCritical(castingUnit, spell, spellTarget, _)
         end
+        if result.finalDamage and result.finalDamage > 0 then
+            castingUnit.charsheet.spellbook:onDealDamage(castingUnit, spellTarget, result.finalDamage, school, spell)
+        end
     end
 end
 
@@ -145,6 +148,9 @@ Spell.ApplyAura = function(spell, toUnit, aura, causer, auraData)
 
     if auraInstance then
         replicatedInsert(toUnit.auras, auraInstance)
+        if causer then
+            replicatedInsert(causer.castAuras, auraInstance)
+        end
         return auraInstance
     end
 end
@@ -170,11 +176,14 @@ Spell.RemoveAura = function(fromUnit, auraOrArg, dispelMode, specificAmount, rem
     for i, auraInstance in ipairs(fromUnit.auras.noproxy) do
         if (((not removalMode or removalMode == AuraRemovalMode.ById) and auraInstance.aura.id == auraOrArg.id)
         or (removalMode == AuraRemovalMode.ByDispelType and auraInstance.aura.effectType == auraOrArg and auraOrArg ~= nil)
-        or (removalMode == AuraRemovalMode.ByAura and auraInstance.aura == auraOrArg)) --Avoid using this mode, it does not work across sides
+        or (removalMode == AuraRemovalMode.ByAura and auraInstance.aura:ReferenceEquals(auraOrArg))) --Avoid using this mode, it may not work across sides
         and (not onlyRemoveThisType or auraInstance.aura.auraType == onlyRemoveThisType)
         and (not onlyCausedByThisUnit or auraInstance.causer and auraInstance.causer == onlyCausedByThisUnit)
         then
             if dispelMode ~= DispelMode.Latest then
+                if auraInstance.causer then
+                    replicatedRemove(auraInstance.causer.castAuras, auraInstance)
+                end
                 markedForRemoval[i] = true
             else
                 if auraInstance.appliedAt > latestTime then
@@ -194,6 +203,9 @@ Spell.RemoveAura = function(fromUnit, auraOrArg, dispelMode, specificAmount, rem
         end
     end
     if latestAura then
+        if latestAura.causer then
+            replicatedRemove(latestAura.causer.castAuras, latestAura)
+        end
         markedForRemoval[latestAura] = true
     end
 
@@ -204,50 +216,16 @@ Spell.RemoveAura = function(fromUnit, auraOrArg, dispelMode, specificAmount, rem
             removedAurasForReturn[#removedAurasForReturn + 1] = auraInstance
         end
     end
-    local shift = 0
-    local fTop = #fromUnit.auras.noproxy
-    for i = 1, fTop+1 do
-        if markedForRemoval[i-1] then
-            shift = shift + 1
-        end
-        if shift > 0 then
-            fromUnit.auras[i-shift] = fromUnit.auras[i]
-        end
-    end
-    for i = fTop-shift+1, fTop do
-        fromUnit.auras[i] = nil
-    end --TODO: May need to finalize each aura to clear connections
+    replicatedUnindex(fromUnit.auras, markedForRemoval) --TODO: May need to finalize each aura to clear connections
 
     return removedAurasForReturn
 end
 
 Spell.RemoveAuraInstance = function(fromUnit, auraInst)
-    local auraidx = nil
-    for i, auraInstance in ipairs(fromUnit.auras.noproxy) do
-        if auraInstance:ReferenceEquals(auraInst) then
-            auraidx = i
-            break
-        end
+    if auraInst.causer then
+        replicatedRemove(auraInst.causer.castAuras, auraInst)
     end
-
-    if not auraidx then
-        return false
-    end
-
-    local shift = 0
-    local fTop = #fromUnit.auras.noproxy
-    for i = 1, fTop+1 do
-        if i == auraidx then
-            shift = shift + 1
-        end
-        if shift > 0 then
-            fromUnit.auras[i-shift] = fromUnit.auras[i]
-        end
-    end
-    for i = fTop-shift+1, fTop do
-        fromUnit.auras[i] = nil
-    end --TODO: May need to finalize each aura to clear connections
-    return true
+    replicatedRemove(fromUnit.auras, auraInst)
 end
 
 local function removeAura(args)
@@ -763,6 +741,9 @@ Spells.Corruption:assign({
             str = str .. "%s Shadow damage and an additional "
         end
         str = str .. "%s Shadow damage over %s seconds."
+        if sheet.spec == Specs.Affliction then
+            str = str .. Linebreak .. "Generates 2 Fel Energy per second for each affected target."
+        end
         return str
     end,
     icon = "rbxassetid://1337",
@@ -809,7 +790,9 @@ Spells.Agony:assign({
     name = "Agony",
     tooltip = function(sheet)
         local str = "The target writhes in agony, causing %s Shadow damage over %s seconds. Damage ramps up over time."
-        str = str .. Linebreak .. "Agony damage has a chance to generate a Soul Shard."
+        if sheet.spec == Specs.Affliction then
+            str = str .. Linebreak .. "Dealing Agony damage generates 4 Fel Energy, reduced for enemies beyond the first."
+        end
         return str
     end,
     icon = "rbxassetid://1337",
@@ -836,6 +819,18 @@ Spells.Agony:assign({
             },
         },
     },
+})
+
+Spells.AfflictionFelEnergy = Spell.new()
+Spells.AfflictionFelEnergy:assign({
+    name = "Fel Energy",
+    tooltip = function(sheet)
+        local str = "Your afflictions generate Fel Energy. Fel Energy is used to fuel your draining abilities."
+        return str
+    end,
+    icon = "rbxassetid://1337",
+    castType = CastType.Passive,
+    school = Schools.Physical
 })
 
 Spells.WritheInAgony = Spell.new()
