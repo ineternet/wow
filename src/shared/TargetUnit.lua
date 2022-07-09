@@ -5,6 +5,8 @@ local TargetUnit = use"WorldUnit".inherit"TargetUnit"
 --Unit class that can target and be targeted and have auras.
 
 TargetUnit.new = Constructor(TargetUnit, {
+    width = 0, --width of the unit (hitbox)
+
     display = "",
     target = nil,
 

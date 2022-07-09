@@ -23,4 +23,16 @@ Effects.ArcaneIntellect = function(worldModel)
     ie()
 end
 
+local at = nil
+Effects.StartMeleeSwing = function(worldModel, atimeout)
+    at = at or workspace.emojipasta.Humanoid.Animator:LoadAnimation(workspace.emojipasta.dagger1h)
+    print("Speed set to " .. 1/atimeout)
+    at:Play(0.1, 10, 1/atimeout)
+end
+
+Effects.StopMeleeSwing = function(worldModel)
+    if not at then return end
+    at:Stop(0.5)
+end
+
 return Effect

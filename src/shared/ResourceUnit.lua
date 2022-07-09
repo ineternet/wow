@@ -383,7 +383,7 @@ ResourceUnit.canCast = function(self, spell, target, location)
     end
 
     --2
-    if target and (spell.range or 0) > 0 then
+    if target and (spell.range or 0) > 0 and false  then
         local distance = target:distanceFrom(self.location)
         if distance > spell.range then
             return false, "Out of range"
@@ -456,6 +456,7 @@ ResourceUnit.startAttack = function(self, spellTarget)
 end
 
 ResourceUnit.stopAttack = function(self)
+    Effects.StopMeleeSwing()
     self:stopMainHandSwing()
     self:stopOffHandSwing()
 end
@@ -576,10 +577,13 @@ ResourceUnit.tick = function(self, deltaTime)
                 self.mainSwingPassed = self.mainSwingPassed + deltaTime
                 local timeout = self.charsheet.equipment:get(Slots.MainHand):swingTimeout()
                 if self.mainSwingPassed >= timeout then
+                    Effects.StartMeleeSwing(nil, timeout)
                     self.mainSwingPassed = self.mainSwingPassed - timeout
                     local dam = self.charsheet:totalMainHandDamage()
                     use"Spell".SchoolDamage(Spells.StartAttack, self, self.target, dam, Schools.Physical)
                 end
+            else
+                Effects.StopMeleeSwing()
             end
         end
         if self.offSwinging then

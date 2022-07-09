@@ -95,7 +95,7 @@ Object.DataStoreSerialize = Object.Serialize
 Object.HttpSerialize = Object.Serialize
 
 Object.tick = function(self, deltaTime)
-    self.dirty = true
+    --self.dirty = true
 end
 
 Object.GetType = function(self)

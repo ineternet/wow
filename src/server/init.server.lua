@@ -22,6 +22,9 @@ char.secondaryResourceAmount = char.secondaryResourceMaximum
 
 char.charsheet.spellbook:learn(const.Spells.HotStreak)
 char.charsheet.spellbook:learn(const.Spells.StartAttack)
+char.charsheet.spellbook:learn(const.Spells.Pyroblast)
+char.charsheet.spellbook:learn(const.Spells.FireBlast)
+char.charsheet.spellbook:learn(const.Spells.ArcaneIntellect)
 
 local stamdagger = items.newOf(const.Items.StamDagger)
 
