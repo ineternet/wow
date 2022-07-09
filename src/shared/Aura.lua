@@ -11,7 +11,12 @@ end
 
 local function schoolDot(school)
     return function(aura, deltaTime, owner, tickStrength)
-        use"Spell".SchoolDamage(aura.spellSource, aura.causer, owner, (aura.damage(aura.causer, aura.causer.charsheet) / aura.duration) * tickStrength, school, 1)
+        local damage = (aura.aura.damagePerSecond(aura.causer, aura.causer.charsheet, aura)) * tickStrength
+        local result = use"Spell".SchoolDamage(aura.spellSource, aura.causer, owner, damage, school, 1)
+
+        if result.finalDamage and result.finalDamage > 0 then
+            aura.causer.charsheet.spellbook:onDealDamage(aura.causer, owner, result.finalDamage, school, aura)
+        end
     end
 end
 
@@ -29,7 +34,7 @@ AuraInstance.tick = function(self, deltaTime, owner)
     and self.causer
     and self.causer.charsheet
     and self.causer.charsheet.haste then
-        hasted = 1 + self.causer.charsheet:haste(owner)
+        hasted = 1 + self.causer.charsheet:haste(self.causer)
     end
 
     
@@ -51,6 +56,7 @@ AuraInstance.tick = function(self, deltaTime, owner)
             partialTick = (1 - nextLogicalTick) * ticks
         end
         if self.elapsedPart >= nextLogicalTick then
+            self.trulyElapsedPart = self.elapsedPart
             self.remainingTicks = self.remainingTicks - 1
             self.aura.onTick(self, deltaTime, owner, partialTick)
         end
@@ -63,7 +69,17 @@ AuraInstance.remainingTime = function(self)
     if not self.duration then --We assume unset duration means the aura is permanent
         return math.huge
     end
-    return self.duration * (1 - self.elapsedPart)
+    --The remaining time can only be approximated because changing haste mid-aura will change the time
+    local hasteMod = 1
+    if self.aura.affectedByCauserHaste
+    and self.causer
+    and self.causer.charsheet
+    and self.causer.charsheet.haste then
+        hasteMod = 1 + self.causer.charsheet:haste(self.causer)
+    end
+
+    return (self.duration * (1 - self.elapsedPart)) --This much base duration left (no haste)
+            / hasteMod                              --Adjust for haste
 end
 
 Aura.createInstance = function(self)
@@ -80,14 +96,21 @@ end
 local QueryHandler = {
     RemoveThisAura = function(dispelMode)
         return function(self, unit)
-            use"Spell".RemoveAura(unit, self.aura, dispelMode)
+            use"Spell".RemoveAura(unit, self.aura, dispelMode, nil, nil, nil, self.causer)
         end
     end
 }
 
 
 local logicalIncrement = 0
-AuraInstance.new = Constructor(AuraInstance, {})
+AuraInstance.new = Constructor(AuraInstance, {
+    elapsedPart = 0,
+    trulyElapsedPart = 0,
+    duration = math.huge,
+    aura = nil,
+    causer = nil,
+    spellSource = nil,
+})
 Aura.new = Constructor(Aura, {
     effectType = AuraDispelType.None, --Default effect type is none.
 }, function(self)
@@ -238,19 +261,54 @@ Auras.Corruption:assign({
     decayType = AuraDecayType.Timed,
     override = AuraOverrideBehavior.Pandemic,
     affectedByCauserHaste = true,
+    damagePerSecond = function(caster, sheet)
+        return (1.1 / 18) * sheet:spellPower(caster)
+    end
+})
+
+Auras.Agony = Aura.new()
+Auras.Agony:assign({
+    name = "Agony",
+    tooltip = function(sheet)
+        local str = "Suffering %s Shadow damage every %s."
+        return str
+    end,
+    onTick = function(aura, deltaTime, owner, tickStrength)
+        local maxstacks = 12
+        if aura.causer.charsheet.spellbook:hasSpell(Spells.WritheInAgony) then
+            --Writhe in Agony talent
+            maxstacks = 18
+        end
+        if tickStrength >= 1 and aura.stacks < maxstacks then
+            --Ramp up damage
+            aura.stacks = aura.stacks + 1
+        end
+        --TODO: Just make one DoT function for each school
+        schoolDot(Schools.Shadow)(aura, deltaTime, owner, tickStrength)
+    end,
+    icon = "rbxassetid://1337",
+    effectType = AuraDispelType.Curse,
+    auraType = AuraType.Debuff,
+    decayType = AuraDecayType.Timed,
+    override = AuraOverrideBehavior.Pandemic,
+    affectedByCauserHaste = true,
+    damagePerSecond = function(caster, sheet, auraInstance)
+        return (0.2 / 18) * auraInstance.stacks * sheet:spellPower(caster)
+    end
 })
 
 Auras.Kicked = Aura.new()
 Auras.Kicked:assign({
     name = "Kicked",
     tooltip = function(sheet)
-        local str = "This unit has been kicked and cannot be healed."
+        local str = "School spell cast interrupted."
         return str
     end,
     icon = "rbxassetid://1337",
     effectType = AuraDispelType.None,
     auraType = AuraType.Hidden,
     decayType = AuraDecayType.Timed,
+    drGroup = DRGroup.Kick,
     override = AuraOverrideBehavior.DiminishingReturns,
 })
 

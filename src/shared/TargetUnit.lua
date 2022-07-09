@@ -10,21 +10,31 @@ TargetUnit.new = Constructor(TargetUnit, {
     display = "",
     target = nil,
 
-    auras = {},
+    auras = {}, --Auras this unit is affected by
+    castAuras = {}, --Auras this unit has cast on others/itself
 
     charsheet = use"Charsheet".new,
-}, function(self)
-    --self.charsheet = ref(use"Charsheet".new())
-    --self.charsheet.unit = ref(self)
-end)
+})
 
-TargetUnit.hasAura = function(self, auradef)
-    return self:findFirstAura(auradef) ~= nil
+TargetUnit.hasAura = function(self, auradef, byCauser)
+    assertObj(auradef)
+    auradef:assertIs("Aura")
+    assert(byCauser == nil or (byCauser.is and byCauser:is("Unit")), "byCauser must be a unit or nil")
+
+    return self:findFirstAura(auradef, byCauser) ~= nil
 end
 
-TargetUnit.findFirstAura = function(self, auradef)
+TargetUnit.findFirstAura = function(self, auradef, byCauser)
+    assertObj(auradef)
+    auradef:assertIs("Aura")
+    assert(byCauser == nil or (byCauser.is and byCauser:is("Unit")), "byCauser must be a unit or nil")
+
     for i, aura in ipairs(self.auras.noproxy) do
-        if aura.aura.id == auradef.id and not aura.invalidate then
+        local cond = true
+        if byCauser then
+            cond = aura.causer and aura.causer:ReferenceEquals(byCauser)
+        end
+        if aura.aura.id == auradef.id and not aura.invalidate and cond then
             return aura
         end
     end
@@ -40,10 +50,8 @@ TargetUnit.isEnemy = function(self, unit)
 end
 
 TargetUnit.tick = function(self, deltaTime)
-    local toRemove = {}
-    local triggerRemove = false
     local auras = self.auras.noproxy
-    for i, aura in ipairs(auras) do
+    for i, _ in ipairs(auras) do
         --TODO: noproxy generates a clone, so we can use it for iterating,
         --but not for mutation. Either make a unified iterator or dont clone in noproxy
         local aura = self.auras[i]
@@ -51,28 +59,12 @@ TargetUnit.tick = function(self, deltaTime)
             for _, event in ipairs(aura.eventConnections) do
                 event:Disconnect()
             end
-            toRemove[i] = true
-            triggerRemove = true
+            use"Spell".RemoveAuraInstance(self, aura)
         else
             aura:tick(deltaTime, self)
         end
     end
 
-    if triggerRemove then
-        local shift = 0
-        local fTop = #auras
-        for i = 1, fTop+1 do
-            if toRemove[i-1] then
-                shift = shift + 1
-            end
-            if shift > 0 then
-                self.auras[i-shift] = self.auras[i]
-            end
-        end
-        for i = fTop-shift+1, fTop do
-            self.auras[i] = nil
-        end --TODO: May need to finalize each aura to clear connections
-    end
     TargetUnit.super.tick(self, deltaTime)
 end
 

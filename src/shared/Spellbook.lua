@@ -110,6 +110,28 @@ Spellbook.postCast = function(self, spell, unit)
     return false
 end
 
+Spellbook.onDealDamage = function(self, unit, victim, damage, school, sourceSpellOrAura)
+    --Fired when the spellbook owner deals damage.
+
+    --Affliction Warlock: Generate Fel Energy from Agony damage
+    if self:hasSpell(Spells.AfflictionFelEnergy) then
+        if sourceSpellOrAura
+        and sourceSpellOrAura.is
+        and sourceSpellOrAura:is("AuraInstance")
+        and sourceSpellOrAura.aura.id == Auras.Agony.id then
+            --Every Agony beyond the first generates less FE
+            local agonies = 0
+            for _, castedAura in ipairs(unit.castAuras.noproxy) do
+                if castedAura.aura.id == Auras.Agony.id then
+                    agonies = agonies + 1
+                end
+            end
+            local gained = 1.5 + 2.5 * math.max(1, agonies) ^ (-2/3)
+            unit:deltaResourceAmount(Resources.FelEnergy, gained)
+        end
+    end
+end
+
 Spellbook.onSpellCritical = function(self, unit, spell, spellTarget, spellLocation)
     --Fired when spell damage is a critical hit.
     

@@ -5,24 +5,26 @@ local PlayerUnit = use"ResourceUnit".inherit"PlayerUnit"
 --Implements player-specific aspects of a player unit.
 
 PlayerUnit.new = Constructor(PlayerUnit, {
-    player = nil, --Player instance
-    
-    party = nil, -- Ref to party object
-
-    xp = 0, --TOTAL accumulated XP
-}, function(self, player)
-    self.player = player
+    player = nil, --PlayerDesc for this unit
+}, function(self, playerdesc)
+    self.player = playerdesc
 end)
 
-PlayerUnit.gainXp = function(self, xp)
-    self.xp = self.xp + xp
-    --TODO: level up
+PlayerUnit.tick = function(self, deltaTime)
+
+    --Class-specific ticks
+
+    --Affliction Warlock: Corruption Fel Energy generation
+    if self.charsheet.spec == Specs.Affliction then
+        local regainedFE = 0
+        for _, aura in ipairs(self.castAuras.noproxy) do
+            if not aura.invalidate and aura.aura.id == Auras.Corruption.id then
+                regainedFE = regainedFE + 2 * deltaTime
+            end
+        end
+        self:deltaResourceAmount(Resources.FelEnergy, regainedFE)
+    end
+    PlayerUnit.super.tick(self, deltaTime)
 end
-
-PlayerUnit.saveToDb = function(self)
-    --TODO
-end
-
-
 
 return PlayerUnit

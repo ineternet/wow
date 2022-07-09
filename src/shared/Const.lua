@@ -215,6 +215,13 @@ const = {
                 --haste = 300,
                 --crit = 300,
             }
+        },
+        item {
+            name = "HasteRing",
+            equipSlot = "Ring",
+            flat = {
+                haste = 30,
+            }
         }
     }, {
         __index = function(t, k)
@@ -269,23 +276,25 @@ const = {
         OffHand = 12,
     },
     AuraOverrideBehavior = {
-        Ignore = 0,              --Multiple aura instances can coexist. Just apply the new aura.
-        ClearOldApplyNew = 1,    --Remove all old auras and apply a new one.
-        UpdateOldDuration = 2,   --Update the duration of the old aura to the new aura's duration.
-        Pandemic = 3,            --Clear old aura, apply new aura, set new aura duration according to Pandemic rules.
-        Stack = 4,               --Attempt to add a stack to the old aura and update its duration.
-        StackDontUpdate = 5,     --Stack, but do not update the duration.
-        DropThisApplication = 6, --If an old aura is found, do not apply the new aura.
-        DiminishingReturns = 7,  --Ignore, but new duration is based on how many
-                                 --times this or similar auras have been applied
-                                 --in the last X seconds.
+        Ignore = 0,                 --Multiple aura instances can coexist. Just apply the new aura.
+        ClearOldApplyNew = 1,       --Remove all old auras and apply a new one.
+        UpdateOldDuration = 2,      --Update the duration of the old aura to the new aura's duration.
+        Pandemic = 3,               --Clear old aura, apply new aura, set new aura duration according to Pandemic rules.
+        Stack = 4,                  --Attempt to add a stack to the old aura and update its duration.
+        StackDontUpdate = 5,        --Stack, but do not update the duration.
+        DropThisApplication = 6,    --If an old aura is found, do not apply the new aura.
+        DiminishingReturns = 7,     --Ignore, but new duration is based on how many
+                                    --times this or similar auras have been applied
+                                    --in the last X seconds.
+        CreateStacksOrPandemic = 8, --Initially create a new aura with a defined amount of stacks.
+                                    --If an old aura is found, extend its duration, not adding any stacks.
     },
     DRGroup = { --Diminishing returns groups. Most of these are only in PVP.
         None = 0, --Does not apply or is influenced by diminishing returns.
         Stun = 1, --Affects PVE.
         Silence = 2,
         Kick = 3, --Interrupts cause this.
-        Root = 4,
+        Root = 4, --Affects PVE.
         Snare = 5, --There are no DR on snares, but the logic remains the same.
         Fear = 6,
         Charm = 7,
@@ -295,7 +304,7 @@ const = {
     Enchants = { --IDs are indices of this table (i.e. auto-increment)
         MinorStamina = enchant {
             mod = {
-                stamina = 0.01
+                stamina = 0.1
             }
         }
     },
@@ -397,6 +406,7 @@ const = {
         VeryLong = 45, --Hunter range
 
         Unlimited = math.huge, --Unlimited range
+        Anywhere = math.huge,
     },
     NoResourceRegeneration = function() --Reuseable function for disabling resource regeneration
         return 0
@@ -451,6 +461,21 @@ const = {
     PartySize = {
         Party = 5,
         Raid = 40,
+    },
+    TalentChoice = {
+        Unassigned = 0,
+        Left = 1,
+        Middle = 2,
+        Right = 3,
+    },
+    TalentTier = {
+        Level10 = 10,
+        Level15 = 15,
+        Level25 = 25,
+        Level35 = 35,
+        Level45 = 45,
+        Level50 = 50,
+        Level55 = 55,
     }
 }
 

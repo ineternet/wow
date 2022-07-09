@@ -45,6 +45,9 @@ local function schoolDamage(args)
         if result.crit then
             castingUnit.charsheet.spellbook:onSpellCritical(castingUnit, spell, spellTarget, _)
         end
+        if result.finalDamage and result.finalDamage > 0 then
+            castingUnit.charsheet.spellbook:onDealDamage(castingUnit, spellTarget, result.finalDamage, school, spell)
+        end
     end
 end
 
@@ -73,13 +76,44 @@ Spell.ApplyAura = function(spell, toUnit, aura, causer, auraData)
     if overrideBehavior == AuraOverrideBehavior.Ignore then
         --Do nothing
     elseif overrideBehavior == AuraOverrideBehavior.ClearOldApplyNew then
-        Spell.RemoveAura(toUnit, aura, DispelMode.All)
+        Spell.RemoveAura(toUnit, aura, DispelMode.All, nil, nil, nil, causer)
     elseif overrideBehavior == AuraOverrideBehavior.UpdateOldDuration then
+        overrides.oldAura = toUnit:findFirstAura(aura, causer)
+        overrides.doNotCreateNewAura = true
+        if overrides.oldAura then
+            overrides.updateOldAura = true
+        end
+    elseif overrideBehavior == AuraOverrideBehavior.Pandemic then
+        local old = toUnit:findFirstAura(aura, causer)
+        local pandemicDuration = math.clamp(
+            old and old:remainingTime() or 0, --If there is an old aura, apply its remaining time
+            0,
+            auraData.duration * 0.3 --up to 30% of the base duration.
+        )
+        if old then
+            overrides.doNotCreateNewAura = true
+            overrides.updateOldAura = true
+            overrides.oldAura = old
+            overrides.stacks = old.stacks or nil
+        end
+        auraData.elapsedPart = old and (old.elapsedPart - old.trulyElapsedPart) or 0
+        auraData.duration = auraData.duration + pandemicDuration
+        --if old then
+        --    Spell.RemoveAuraInstance(toUnit, old)
+        --end
+    elseif overrideBehavior == AuraOverrideBehavior.Stack or overrideBehavior == AuraOverrideBehavior.StackDontUpdate then
         overrides.doNotCreateNewAura = true
         overrides.updateOldAura = true
         overrides.oldAura = toUnit:findFirstAura(aura)
-    elseif overrideBehavior == AuraOverrideBehavior.Pandemic then
-        local old = toUnit:findFirstAura(aura)
+        auraData.stacks = (auraData.stacks or 0) + overrides.oldAura.stacks
+    elseif overrideBehavior == AuraOverrideBehavior.DropThisApplication then
+        if toUnit:hasAura(aura, causer) then
+            return
+        end
+    elseif overrideBehavior == AuraOverrideBehavior.DiminishingReturns then
+        --Same as Ignore. TODO
+    elseif overrideBehavior == AuraOverrideBehavior.CreateStacksOrPandemic then
+        local old = toUnit:findFirstAura(aura, causer)
         local pandemicDuration = math.clamp(
             old and old:remainingTime() or 0, --If there is an old aura, apply its remaining time
             0,
@@ -88,15 +122,6 @@ Spell.ApplyAura = function(spell, toUnit, aura, causer, auraData)
         overrides.duration = auraData.duration + pandemicDuration
         if old then
             Spell.RemoveAuraInstance(toUnit, old)
-        end
-    elseif overrideBehavior == AuraOverrideBehavior.Stack or overrideBehavior == AuraOverrideBehavior.StackDontUpdate then
-        overrides.doNotCreateNewAura = true
-        overrides.updateOldAura = true
-        overrides.oldAura = toUnit:findFirstAura(aura)
-        auraData.stacks = (auraData.stacks or 0) + overrides.oldAura.stacks
-    elseif overrideBehavior == AuraOverrideBehavior.DropThisApplication then
-        if toUnit:hasAura(aura) then
-            return
         end
     end
 
@@ -113,7 +138,7 @@ Spell.ApplyAura = function(spell, toUnit, aura, causer, auraData)
             if overrides[k] then
                 auraInstance[k] = overrides[k]
             else
-                auraInstance[k] = v
+                auraInstance[k] = resolveNumFn(v, causer.charsheet)
             end
         end
         if causer then
@@ -123,6 +148,9 @@ Spell.ApplyAura = function(spell, toUnit, aura, causer, auraData)
 
     if auraInstance then
         replicatedInsert(toUnit.auras, auraInstance)
+        if causer then
+            replicatedInsert(causer.castAuras, auraInstance)
+        end
         return auraInstance
     end
 end
@@ -133,7 +161,7 @@ local function applyAura(args)
     end
 end
 
-Spell.RemoveAura = function(fromUnit, auraOrArg, dispelMode, specificAmount, removalMode, onlyRemoveThisType)
+Spell.RemoveAura = function(fromUnit, auraOrArg, dispelMode, specificAmount, removalMode, onlyRemoveThisType, onlyCausedByThisUnit)
     if not dispelMode then
         dispelMode = DispelMode.All
     end
@@ -148,10 +176,14 @@ Spell.RemoveAura = function(fromUnit, auraOrArg, dispelMode, specificAmount, rem
     for i, auraInstance in ipairs(fromUnit.auras.noproxy) do
         if (((not removalMode or removalMode == AuraRemovalMode.ById) and auraInstance.aura.id == auraOrArg.id)
         or (removalMode == AuraRemovalMode.ByDispelType and auraInstance.aura.effectType == auraOrArg and auraOrArg ~= nil)
-        or (removalMode == AuraRemovalMode.ByAura and auraInstance.aura == auraOrArg)) --Avoid using this mode, it does not work across sides
+        or (removalMode == AuraRemovalMode.ByAura and auraInstance.aura:ReferenceEquals(auraOrArg))) --Avoid using this mode, it may not work across sides
         and (not onlyRemoveThisType or auraInstance.aura.auraType == onlyRemoveThisType)
+        and (not onlyCausedByThisUnit or auraInstance.causer and auraInstance.causer == onlyCausedByThisUnit)
         then
             if dispelMode ~= DispelMode.Latest then
+                if auraInstance.causer then
+                    replicatedRemove(auraInstance.causer.castAuras, auraInstance)
+                end
                 markedForRemoval[i] = true
             else
                 if auraInstance.appliedAt > latestTime then
@@ -171,6 +203,9 @@ Spell.RemoveAura = function(fromUnit, auraOrArg, dispelMode, specificAmount, rem
         end
     end
     if latestAura then
+        if latestAura.causer then
+            replicatedRemove(latestAura.causer.castAuras, latestAura)
+        end
         markedForRemoval[latestAura] = true
     end
 
@@ -181,55 +216,21 @@ Spell.RemoveAura = function(fromUnit, auraOrArg, dispelMode, specificAmount, rem
             removedAurasForReturn[#removedAurasForReturn + 1] = auraInstance
         end
     end
-    local shift = 0
-    local fTop = #fromUnit.auras.noproxy
-    for i = 1, fTop+1 do
-        if markedForRemoval[i-1] then
-            shift = shift + 1
-        end
-        if shift > 0 then
-            fromUnit.auras[i-shift] = fromUnit.auras[i]
-        end
-    end
-    for i = fTop-shift+1, fTop do
-        fromUnit.auras[i] = nil
-    end --TODO: May need to finalize each aura to clear connections
+    replicatedUnindex(fromUnit.auras, markedForRemoval) --TODO: May need to finalize each aura to clear connections
 
     return removedAurasForReturn
 end
 
 Spell.RemoveAuraInstance = function(fromUnit, auraInst)
-    local auraidx = nil
-    for i, auraInstance in ipairs(fromUnit.auras.noproxy) do
-        if auraInstance:ReferenceEquals(auraInst) then
-            auraidx = i
-            break
-        end
+    if auraInst.causer then
+        replicatedRemove(auraInst.causer.castAuras, auraInst)
     end
-
-    if not auraidx then
-        return false
-    end
-
-    local shift = 0
-    local fTop = #fromUnit.auras.noproxy
-    for i = 1, fTop+1 do
-        if i == auraidx then
-            shift = shift + 1
-        end
-        if shift > 0 then
-            fromUnit.auras[i-shift] = fromUnit.auras[i]
-        end
-    end
-    for i = fTop-shift+1, fTop do
-        fromUnit.auras[i] = nil
-    end --TODO: May need to finalize each aura to clear connections
-    return true
+    replicatedRemove(fromUnit.auras, auraInst)
 end
 
 local function removeAura(args)
     return function(spell, castingUnit, spellTarget, _)
-        Spell.RemoveAura(spellTarget, args.aura, args.dispelMode)
+        Spell.RemoveAura(spellTarget, args.aura, args.dispelMode, args.amount, args.removalMode, args.removeType, args.causedByCasterOnly and castingUnit or args.causedByTargetOnly and spellTarget or nil)
     end
 end
 
@@ -255,14 +256,14 @@ local function projectile(args)
         local spd = 0.5
         --fb.AlignOrientation
         fb.Velocity = (goal - start) / spd
-        task.wait(spd)
+        wait(spd)
         local fn = args.onArriveWorldModel
         if fn then
             fn(workspace.Dummy)
         end
         fb.Anchored = true
         fb.Transparency = 1
-        task.delay(2, function()
+        delay(2, function()
             fb:Destroy()
         end)
     end
@@ -315,7 +316,7 @@ local function ifSpecAndLevel(spec, level)
             local effect = args.effect or args[1]
             local compoundReturn = false
 
-            if castingUnit.sheet.spec == spec and castingUnit.sheet.level >= level then
+            if castingUnit.charsheet.spec == spec and castingUnit.charsheet.level >= level then
                 compoundReturn = args.dropFollowingEffects
                 compoundReturn = effect(spell, castingUnit, spellTarget, spellLocation) or compoundReturn
             end
@@ -500,7 +501,7 @@ Spells.HotStreak:assign({
             effect = multi {
                 removeAura { --Remove Heating Up
                     aura = Auras.HeatingUp,
-                    dispelMode = DispelMode.All,
+                    dispelMode = DispelMode.All
                 },
                 applyAura {
                     aura = Auras.HotStreak,
@@ -740,6 +741,9 @@ Spells.Corruption:assign({
             str = str .. "%s Shadow damage and an additional "
         end
         str = str .. "%s Shadow damage over %s seconds."
+        if sheet.spec == Specs.Affliction then
+            str = str .. Linebreak .. "Generates 2 Fel Energy per second for each affected target."
+        end
         return str
     end,
     icon = "rbxassetid://1337",
@@ -750,7 +754,12 @@ Spells.Corruption:assign({
     cooldown = 0,
     gcd = GCD.Standard,
 
-    castType = CastType.Casting,
+    castType = function(sheet)
+        if sheet.spec == Specs.Affliction and sheet.level >= 4 then
+            return CastType.Instant
+        end
+        return CastType.Casting
+    end,
     castTime = 2,
     targetType = TargetType.Enemy,
     range = Range.Long,
@@ -776,6 +785,66 @@ Spells.Corruption:assign({
     },
 })
 
+Spells.Agony = Spell.new()
+Spells.Agony:assign({
+    name = "Agony",
+    tooltip = function(sheet)
+        local str = "The target writhes in agony, causing %s Shadow damage over %s seconds. Damage ramps up over time."
+        if sheet.spec == Specs.Affliction then
+            str = str .. Linebreak .. "Dealing Agony damage generates 4 Fel Energy, reduced for enemies beyond the first."
+        end
+        return str
+    end,
+    icon = "rbxassetid://1337",
+    resource = Resources.Mana,
+    resourceCost = 0.01,
+    cooldown = 0,
+    gcd = GCD.Standard,
+    castType = CastType.Instant,
+    targetType = TargetType.Enemy,
+    range = Range.Long,
+    modifyAttack = false,
+    school = Schools.Shadow,
+    effects = {
+        applyAura {
+            aura = Auras.Agony,
+            auraData = {
+                duration = 18,
+                stacks = function(sheet)
+                    if sheet.spellbook:hasSpell(Spells.WritheInAgony) then
+                        return 4
+                    end
+                    return 1
+                end,
+            },
+        },
+    },
+})
+
+Spells.AfflictionFelEnergy = Spell.new()
+Spells.AfflictionFelEnergy:assign({
+    name = "Fel Energy",
+    tooltip = function(sheet)
+        local str = "Your afflictions generate Fel Energy. Fel Energy is used to fuel your draining abilities."
+        return str
+    end,
+    icon = "rbxassetid://1337",
+    castType = CastType.Passive,
+    school = Schools.Physical
+})
+
+Spells.WritheInAgony = Spell.new()
+Spells.WritheInAgony:assign({
+    name = "Writhe in Agony",
+    tooltip = function(sheet)
+        local str = "Agony starts at 4 stacks and may ramp up to 18 stacks."
+        return str
+    end,
+    icon = "rbxassetid://1337",
+    castType = CastType.Passive,
+    school = Schools.Physical
+})
+
 Spells.Kleptomancy = Spell.new()
 Spells.Kleptomancy:assign({
     name = "Kleptomancy",
@@ -784,9 +853,7 @@ Spells.Kleptomancy:assign({
         return str
     end,
     icon = "rbxassetid://1337",
-
     castType = CastType.Passive,
-
     school = Schools.Physical,
 })
 
@@ -827,7 +894,7 @@ Spells.Spellsteal:assign({
 
     castType = CastType.Instant,
     targetType = TargetType.Enemy,
-    range = Range.Combat,
+    range = Range.Long,
 
     modifyAttack = false,
 
@@ -842,10 +909,59 @@ Spells.Spellsteal:assign({
         },
         spellSteal {
             dispelType = AuraDispelType.Magic,
-            dispelMode = DispelMode.SpecificAmount,
-            amount = 1,
+            dispelMode = DispelMode.Latest
         },
     },
+})
+
+Spells.ImprovedBlock = Spell.new()
+Spells.ImprovedBlock:assign({
+    name = "Block Succession",
+    tooltip = function(sheet)
+        local str = "After you critical block an attack, increase your Block by %s%% for %s seconds."
+        return str
+    end,
+    icon = "rbxassetid://1337",
+    castType = CastType.Passive,
+    school = Schools.Physical,
+})
+
+Spells.ImprovedShieldBash = Spell.new()
+Spells.ImprovedShieldBash:assign({
+    name = "Counter Bash",
+    tooltip = function(sheet)
+        local str = "Shield Bash has a %s%% chance to regain a charge after blocking an attack."
+        return str
+    end,
+    icon = "rbxassetid://1337",
+    castType = CastType.Passive,
+    school = Schools.Physical,
+})
+
+Spells.ShieldWall = Spell.new()
+Spells.ShieldWall:assign({
+    name = "Shield Wall",
+    tooltip = function(sheet)
+        local str = "Ready your shield, reducing damage taken from attacks by %s%% for %s seconds."
+        return str
+    end,
+    icon = "rbxassetid://1337",
+    
+    gcd = GCD.Standard,
+    cooldown = 25,
+    castType = CastType.Instant,
+    targetType = TargetType.Self,
+    range = Range.Self,
+
+    school = Schools.Physical,
+    effects = {
+        applyAura {
+            aura = Auras.ShieldWall,
+            auraData = {
+                duration = 6,
+            },
+        },
+    }
 })
 
 Spells.StartAttack = Spell.new()
@@ -865,9 +981,9 @@ Spells.StartAttack:assign({
 
     modifyAttack = true,
 
-    effects = {
+    --[[effects = {
         --startAttack
-    }
+    }]]
 })
 
 return Spell
