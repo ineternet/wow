@@ -2,66 +2,6 @@ local const, DefaultItemValues
 
 local void = function() end
 
-local function item(idef)
-    for k, v in pairs(DefaultItemValues) do
-        idef[k] = idef[k] or v
-
-        --Set the metatable to the default MT
-        --The default MT covers cases where stats are not defined
-        if type(idef[k]) == "table" then
-            setmetatable(idef[k], getmetatable(idef[k]))
-        end
-    end
-    setmetatable(idef, {
-        __index = function(t, k)
-            if k == "id" then
-                for i, v in pairs(const.Items) do
-                    if v == t then
-                        return i
-                    end
-                end
-            end
-        end,
-        __tostring = function(t)
-            return ("(ItemDefintion:%s)"):format(t.name or "unnamed")
-        end,
-        __concat = function(a, b)
-            return tostring(a) .. tostring(b)
-        end
-    })
-    return idef
-end
-
-local function enchant(idef)
-    for k, v in pairs(DefaultEnchantValues) do
-        idef[k] = idef[k] or v
-
-        --Set the metatable to the default MT
-        --The default MT covers cases where stats are not defined
-        if type(idef[k]) == "table" then
-            setmetatable(idef[k], getmetatable(idef[k]))
-        end
-    end
-    setmetatable(idef, {
-        __index = function(t, k)
-            if k == "id" then
-                for i, v in pairs(const.Enchants) do
-                    if v == t then
-                        return i
-                    end
-                end
-            end
-        end,
-        __tostring = function(t)
-            return ("(EnchantDefintion:%s)"):format(t.name or "unnamed")
-        end,
-        __concat = function(a, b)
-            return tostring(a) .. tostring(b)
-        end
-    })
-    return idef
-end
-
 local numIndexMt = {
     __index = function(t, k)
         for idesc, idx in pairs(t) do
@@ -75,49 +15,6 @@ local numIndexMt = {
 local function bidirectional(tbl)
     return setmetatable(tbl, numIndexMt)
 end
-
-DefaultItemValues = {
-    --Which slot this item can be equipped in.
-    --"Ring" and "Trinket" for any of those slots, respectively.
-    --nil if the item is not equippable in any slot.
-    equipSlot = nil,
-
-    --Whether this item will take up both hand slots.
-    --true/false if the item is a main-hand.
-    --nil in any other case.
-    --If this is nil for a main-hand, same behavior as "false" is assumed.
-    takeBothHands = nil,
-
-    --The Rarity the item usually appears to be.
-    --Special cases may override this within the actual item object.
-    defaultRarity = 0,
-
-    flat = setmetatable({}, {
-        __index = function(t, k)
-            return 0
-        end
-    }),
-
-    mod = setmetatable({}, {
-        __index = function(t, k)
-            return 1
-        end
-    })
-}
-
-DefaultEnchantValues = {
-    flat = setmetatable({}, {
-        __index = function(t, k)
-            return 0
-        end
-    }),
-
-    mod = setmetatable({}, {
-        __index = function(t, k)
-            return 1
-        end
-    })
-}
 
 const = {
     Resources = bidirectional { --Resource types
@@ -198,40 +95,6 @@ const = {
         Channel = 3, --In the middle of a channel
         Dead = 4, --Dead, unable to change actions from this point on
     },
-    Items = setmetatable({ --IDs are indices of this table (i.e. auto-increment)
-        item {
-            name = "NullItem"
-        },
-        item {
-            name = "StamDagger",
-            equipSlot = "MainHand",
-            dualWieldable = true,
-            attacksPerSecond = 1.5,
-            flat = {
-                intellect = 4,
-                stamina = 5,
-                weaponSpeed = 1.4,
-                weaponDamage = 4,
-                --haste = 300,
-                --crit = 300,
-            }
-        },
-        item {
-            name = "HasteRing",
-            equipSlot = "Ring",
-            flat = {
-                haste = 30,
-            }
-        }
-    }, {
-        __index = function(t, k)
-            for _, item in pairs(t) do
-                if rawget(item, "name") == k then
-                    return item
-                end
-            end
-        end
-    }),
     Rarities = { --Item rarities. Padding is added for future expansion.
         Trash = 0, --"Grey items", which have no use (except grey equipment). Part of the recommended selling indicator.
         Common = 1, --Most normal items and non-binding statless equipment.
@@ -252,7 +115,7 @@ const = {
         Rare = Color3.new(0.196078, 0.380392, 0.878431),
         Epic = Color3.new(0.635294, 0.149019, 0.733333),
         Legendary = Color3.new(0.972549, 0.588235, 0.011764),
-        Mythical = Color3.new(0.905882, 0.054901, 0.054901),
+        Mythical = Color3.new(0.905882, 0.054901, 0.521568),
         Artifact = Color3.new(0.968627, 0.862745, 0.568627),
         Account = Color3.new(0.203921, 0.870588, 0.960784),
         Corp = Color3.new(0.203921, 0.870588, 0.960784),
@@ -260,7 +123,7 @@ const = {
     Gems = { --NYI
         Empty = 0
     },
-    Slots = { --Equippable slots for all units.
+    Slots = bidirectional { --Equippable slots for all units.
         Head = 0,
         Neck = 1,
         Back = 2,
@@ -271,9 +134,13 @@ const = {
         Shirt = 7,
         Ring1 = 8,
         Ring2 = 9,
+        Ring = 90,
         Trinket1 = 10,
+        Trinket = 91,
         MainHand = 11,
         OffHand = 12,
+        Any = 100,
+        None = 200,
     },
     AuraOverrideBehavior = {
         Ignore = 0,                 --Multiple aura instances can coexist. Just apply the new aura.
@@ -301,13 +168,13 @@ const = {
         Disorient = 8,
         Incapacitate = 9,
     },
-    Enchants = { --IDs are indices of this table (i.e. auto-increment)
+    --[[Enchants = { --IDs are indices of this table (i.e. auto-increment)
         MinorStamina = enchant {
             mod = {
-                stamina = 0.1
+                stamina = 0.1,
             }
         }
-    },
+    },]]
     PrimaryStatIndex = { --Index of the primary stat in the stat array, only for ease of use
         Strength = 1, Agility = 2, Stamina = 3, Intellect = 4,
         strength = 1, agility = 2, stamina = 3, intellect = 4,
@@ -586,24 +453,30 @@ const.AuraTimer = function(seconds)
     end
 end
 
-local confirmedNonExistingSpells = {} --Spells that are confirmed to not exist as not to spam warnings
-const.Spells = setmetatable({
+local metaIndexFn = function(t, k, v)
+    --Assign ID when adding new metaitem
+    rawset(t, v.id, v)
+    --Assign index when adding new metaitem
+    rawset(v, "index", k)
+    --default behavior
+    rawset(t, k, v)
+end
 
-}, {
-    __index = function(t, k)
+local metaCacheFn = function(cache, scriptName)
+    return function(t, k)
         local rg
-        if tonumber(k) then --Spell Id
+        if tonumber(k) then --Metaitem ID
             rg = rawget(t, k)
         else
             rg = rawget(t, k)
         end
         if not rg then
-            if not confirmedNonExistingSpells[k] then
-                require(script.Parent.Spell)
+            if not cache[k] then
+                require(script.Parent[scriptName])
                 rg = rawget(t, k)
                 if not rg then
-                    confirmedNonExistingSpells[k] = true
-                    warn("Error: Spell with index " .. tostring(k) .. " does not exist. Returning empty spell in the future.")
+                    cache[k] = true
+                    warn("Error: " .. scriptName .. " with index " .. tostring(k) .. " does not exist. Returning empty in the future.")
                     return {}
                 end
             else
@@ -611,52 +484,23 @@ const.Spells = setmetatable({
             end
         end
         return rg
-    end,
-    __newindex = function(t, k, v)
-        --Assign ID when adding new spell
-        rawset(t, v.id, v)
-        --Assign index when adding new spell
-        rawset(v, "index", k)
-        --default behavior
-        rawset(t, k, v)
-    end,
-})
+    end
+end
 
-local confirmedNonExistingAuras = {} --Auras that are confirmed to not exist as not to spam warnings
-const.Auras = setmetatable({
+local metaItemMt = function(scriptName)
+    return {
+        __index = metaCacheFn({}, scriptName),
+        __newindex = metaIndexFn,
+    }
+end
 
-}, {
-    __index = function(t, k)
-        local rg = rawget(t, k)
-        if not rg then
-            if not confirmedNonExistingAuras[k] then
-                require(script.Parent.Aura)
-                rg = rawget(t, k)
-                if not rg then
-                    confirmedNonExistingAuras[k] = true
-                    warn("Error: Aura with index " .. k .. " does not exist. Returning empty aura in the future.")
-                    return {}
-                end
-            else
-                rg = {}
-            end
-        end
-        return rg
-    end,
-    __newindex = function(t, k, v)
-        --Assign ID when adding new spell
-        rawset(t, v.id, v)
-        --Assign index when adding new spell
-        rawset(v, "index", k)
-        --default behavior
-        rawset(t, k, v)
-    end,
-})
+const.Spells = setmetatable({}, metaItemMt("Spell"))
+const.Auras = setmetatable({}, metaItemMt("Aura"))
+const.Enchants = setmetatable({}, metaItemMt("Enchant"))
+const.Items = setmetatable({}, metaItemMt("ItemDefinition"))
 
 local confirmedNonExistingEffects = {} --Effects that are confirmed to not exist as not to spam warnings
-const.Effects = setmetatable({
-
-}, {
+const.Effects = setmetatable({}, {
     __index = function(t, k)
         local rg = rawget(t, k)
         if not rg then

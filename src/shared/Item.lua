@@ -5,7 +5,7 @@ local Item = use"Object".inherit"Item"
 --Singular item
 
 Item.new = Constructor(Item, {
-    itemId = 0,
+    item = nil,
 
     durability = 0,
 
@@ -15,30 +15,14 @@ Item.new = Constructor(Item, {
     sockets = {},
 })
 
-Item.newOfName = function(itemName)
-    return Item.newOfId(Items[itemName].id)
-end
-
 Item.newOf = function(item)
-    return Item.newOfId(item.id)
-end
-
-Item.newOfId = function(id)
     local newItem = Item.new()
-    newItem.itemId = id
+    newItem.item = item
     return newItem
 end
 
-Item.applyEnchantment = function(self, enchant)
-    self.enchant = enchant
-end
-
-function Item:def()
-    return Items[self.itemId]
-end
-
 function Item:flat(stat)
-    local value = self:def().flat[stat]
+    local value = self.item.flat[stat]
     if self.enchant and self.enchant.flat and self.enchant.flat[stat] then
         value = value + self.enchant.flat[stat]
     end
@@ -46,7 +30,7 @@ function Item:flat(stat)
 end
 
 function Item:mod(stat)
-    local value = self:def().mod[stat]
+    local value = self.item.mod[stat]
     if self.enchant and self.enchant.mod and self.enchant.mod[stat] then
         value = value + self.enchant.mod[stat]
     end
@@ -54,11 +38,11 @@ function Item:mod(stat)
 end
 
 function Item:swingable()
-    return self:def().attacksPerSecond and true or false
+    return self.item.attacksPerSecond and true or false
 end
 
 function Item:swingTimeout()
-    return 1 / self:def().attacksPerSecond
+    return 1 / self.item.attacksPerSecond
 end
 
 return Item

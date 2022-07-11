@@ -624,7 +624,9 @@ end
 
 ResourceUnit.procCrit = function(self, spell)
     local critChance = self.charsheet:crit(self)
-    if critChance > 0 then
+    if critChance >= 1 then
+        return true
+    elseif critChance > 0 then
         local critRoll = math.random()
         if critRoll < critChance then
             return true

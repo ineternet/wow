@@ -7,20 +7,7 @@ local Equipment = use"Object".inherit"Equipment"
 local itemStringConstructor = use"Item".newOf
 Equipment.new = Constructor(Equipment, {
     slots = {
-        --For now code everything to work with nil values AND "null items". Still unclear if this will use nil values or "null items".
-        --[[[Slots.Head] = itemStringConstructor"NullItem",
-        [Slots.Neck] = itemStringConstructor"NullItem",
-        [Slots.Back] = itemStringConstructor"NullItem",
-        [Slots.Chest] = itemStringConstructor"NullItem",
-        [Slots.Hands] = itemStringConstructor"NullItem",
-        [Slots.Legs] = itemStringConstructor"NullItem",
-        [Slots.Feet] = itemStringConstructor"NullItem",
-        [Slots.Shirt] = itemStringConstructor"NullItem",
-        [Slots.Ring1] = itemStringConstructor"NullItem",
-        [Slots.Ring2] = itemStringConstructor"NullItem",
-        [Slots.Trinket1] = itemStringConstructor"NullItem",
-        [Slots.MainHand] = itemStringConstructor"NullItem",
-        [Slots.OffHand] = itemStringConstructor"NullItem",]]
+        --nil means empty slot
         [Slots.Head] = nil,
         [Slots.Neck] = nil,
         [Slots.Back] = nil,
@@ -34,31 +21,78 @@ Equipment.new = Constructor(Equipment, {
         [Slots.Trinket1] = nil,
         [Slots.MainHand] = nil,
         [Slots.OffHand] = nil,
-    }
+    },
 })
 
+local equippableSlots = {
+    [Slots.Head] = true,
+    [Slots.Neck] = true,
+    [Slots.Back] = true,
+    [Slots.Chest] = true,
+    [Slots.Hands] = true,
+    [Slots.Legs] = true,
+    [Slots.Feet] = true,
+    [Slots.Shirt] = true,
+    [Slots.Ring1] = true,
+    [Slots.Ring2] = true,
+    [Slots.Trinket1] = true,
+    [Slots.MainHand] = true,
+    [Slots.OffHand] = true,
+}
+
+--[[
+    Find out how many of a single stat this entire equipment set provides.
+    @param stat The stat to check for.
+    @return The added flat value of the stat.
+    @return The added percentage value for the stat.
+]]
 function Equipment:aggregate(stat)
     local base = 0
     for _, item in pairs(self.slots.noproxy) do
-        if item and item:def() and item:def().flat and item:def().flat[stat] then
+        if item and item.item and item.item.flat and item.item.flat[stat] then
             base = base + item:flat(stat)
         end
     end
     local mod = 1
     for _, item in pairs(self.slots.noproxy) do
-        if item and item:def() and item:def().mod and item:def().mod[stat] then
+        if item and item.item and item.item.mod and item.item.mod[stat] then
             mod = mod * item:mod(stat)
         end
     end
     return base, mod
 end
 
-function Equipment:swap(slot, newItem)
+--[[
+    Swap an item in a slot with another item.
+    @param slot The slot to swap. Must be a valid slot (see equippableSlots).
+    @param newItem The item to swap with. If nil, the slot will be emptied.
+    @return The item that was previously in the slot. If the slot was empty, nil.
+]]
+Equipment.swap = function(self, slot, newItem)
     assertObj(newItem)
     newItem:assertIs("Item")
+
+    if newItem.item.equipSlot ~= slot then
+        if (slot == Slots.Ring1 or slot == Slots.Ring2) and newItem.item.equipSlot == Slots.Ring then
+            --Ring1 and Ring2 accept Ring
+        elseif slot == Slots.Trinket1 and newItem.item.equipSlot == Slots.Trinket then
+            --Trinket1 accepts Trinket
+        elseif slot == Slots.OffHand and newItem.item.equipSlot == Slots.MainHand and newItem.item.dualWieldable then
+            --OffHand accepts MainHand if it can dual wield
+        elseif newItem.item.equipSlot == Slots.Any then
+            --Item can be equipped in any slot
+        elseif newItem.item.equipSlot == Slots.None then
+            return false, "Item cannot be equipped."
+        elseif not equippableSlots[slot] then
+            return false, "Invalid slot " .. Slots[slot] .. "."
+        else
+            return false, "Item cannot be equipped in " .. Slots[slot] .. "."
+        end
+    end
+
     local oldItem = self.slots[slot]
     self.slots[slot] = newItem
-    return oldItem
+    return oldItem, ""
 end
 
 function Equipment:has(slot)

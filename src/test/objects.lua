@@ -53,8 +53,7 @@ local _ = tu.charsheet.equipment:swap(const.Slots.MainHand, stamdagger)
 local _ = tu.charsheet.equipment:swap(const.Slots.OffHand, stamdagger2)
 
 print("Stamina:", tu.charsheet:stamina(tu))
-print("Enchanting Main Hand with Minor Stamina.")
-stamdagger:applyEnchantment(const.Enchants.MinorStamina)
+print("Enchanting Main Hand with Minor Stamina:", const.Enchants.MinorStamina:applyToItem(stamdagger))
 print("Stamina:", tu.charsheet:stamina(tu))
 
 local hastering = items.newOf(const.Items.HasteRing)
