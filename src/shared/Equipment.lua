@@ -73,6 +73,15 @@ Equipment.swap = function(self, slot, newItem)
     newItem:assertIs("Item")
 
     if newItem.item.equipSlot ~= slot then
+        if newItem.item.equipSlot == Slots.MainHand and newItem.item.twoHanded then
+            if slot == Slots.OffHand then
+                slot = Slots.MainHand --We assume this was the intended slot
+            end
+            if self[Slots.OffHand] ~= nil then
+                return false, "Off-hand slot must be empty to equip a two-handed weapon."
+                --This error is not game-relevant because the client will automatically unequip the off-hand weapon.
+            end
+        end
         if (slot == Slots.Ring1 or slot == Slots.Ring2) and newItem.item.equipSlot == Slots.Ring then
             --Ring1 and Ring2 accept Ring
         elseif slot == Slots.Trinket1 and newItem.item.equipSlot == Slots.Trinket then
