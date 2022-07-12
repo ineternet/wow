@@ -964,6 +964,43 @@ Spells.ShieldWall:assign({
     }
 })
 
+Spells.DrainLife = Spell.new()
+Spells.DrainLife:assign({
+    name = "Drain Life",
+    tooltip = function(sheet)
+        local str = "Steal your target's life force, dealing %s Shadow damage over %s seconds and healing you for %s%% of the damage dealt."
+        return str
+    end,
+    icon = "rbxassetid://1337",
+    resource = Resources.FelEnergy,
+    resourceCost = 0.01,
+    cooldown = 0,
+    gcd = GCD.Standard,
+    castType = CastType.Channeled,
+    channelDuration = 6,
+    targetType = TargetType.Enemy,
+    range = Range.Long,
+    modifyAttack = false,
+    school = Schools.Shadow,
+    effects = {
+        channelAura {
+            aura = Auras.DrainLife,
+            auraData = {
+                duration = 18,
+            },
+        },
+    },
+})
+
+
+
+
+
+
+
+
+
+
 Spells.StartAttack = Spell.new()
 Spells.StartAttack:assign({
     name = "Attack",

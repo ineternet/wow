@@ -63,6 +63,7 @@ Charsheet.isAgilitySpec = function(self)
     })[self.spec or 0] or false
 end
 
+--Primary stats
 for _, primStat in ipairs({"strength", "stamina", "agility", "intellect"}) do
     Charsheet[primStat] = function(self, unit)
         local classBase = math.round(BasePrimaryStat(primStat, self.level, self.class, self.race))
@@ -136,6 +137,8 @@ Charsheet.diminishSecondaryStat = function(self, stat)
     return diminish(pctStat) * 100
 end
 
+--Secondary stats
+
 Charsheet.mastery = function(self, unit)
     local mAuraFlat = unit:auraStatFlat("mastery")
     local value = (8 + mAuraFlat + self:diminishSecondaryStat("mastery")) / 100
@@ -159,6 +162,24 @@ Charsheet.haste = function(self, unit)
     local value = (1 + self:diminishSecondaryStat("haste") / 100) * hAuraMod - 1
     return value
 end
+
+--Simple tertiary stats
+
+for _, tertStat in ipairs({"avoidance", "leech", "speed"}) do
+    local mval = 0
+    if tertStat == "avoidance" then
+        mval = 0.2
+    end
+    Charsheet[tertStat] = function(self, unit)
+        local aAuraMod = unit:auraStatFlat(tertStat)
+        local gearBase, gearMod = self.equipment:aggregate(tertStat)
+        local avd = gearBase * gearMod
+        local value = aAuraMod + math.min(mval, math.round(avd) / SecondaryRatingConversion[tertStat][self.level] / 100)
+        return value
+    end
+end
+
+--Other
 
 Charsheet.armor = function(self, unit)
     local aAuraFlat = unit:auraStatFlat("armor")

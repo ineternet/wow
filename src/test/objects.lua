@@ -18,7 +18,7 @@ local items = habitat:require(root.Item)
 local const = habitat:require(root.Const)
 local env = habitat:require(root.Global)
 
-local plr = playerdesc.new(nil, "", {
+local plr = playerdesc.new(nil, "", { --Mock DB entry
     xp = 0,
     talents = {
 
