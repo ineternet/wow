@@ -49,17 +49,11 @@ tu:targetUnit(enemy)
 
 local stamdagger = items.newOf(const.Items.StamDagger)
 local stamdagger2 = items.newOf(const.Items.StamDagger)
-
 local _ = tu.charsheet.equipment:swap(const.Slots.MainHand, stamdagger)
 local _ = tu.charsheet.equipment:swap(const.Slots.OffHand, stamdagger2)
-
-print("Stamina:", tu.charsheet:stamina(tu))
-print("Enchanting Main Hand with Minor Stamina:", const.Enchants.MinorStamina:applyToItem(stamdagger))
-print("Stamina:", tu.charsheet:stamina(tu))
-
+const.Enchants.MinorStamina:applyToItem(stamdagger)
 local hastering = items.newOf(const.Items.HasteRing)
 local _ = tu.charsheet.equipment:swap(const.Slots.Ring1, hastering)
-
 
 tu.charsheet.spellbook:learn(const.Spells.StartAttack)
 tu.charsheet.spellbook:learn(const.Spells.FireBlast)
@@ -69,23 +63,35 @@ tu.charsheet.spellbook:learn(const.Spells.Kleptomancy)
 tu.charsheet.spellbook:learn(const.Spells.Corruption)
 tu.charsheet.spellbook:learn(const.Spells.Agony)
 tu.charsheet.spellbook:learn(const.Spells.AfflictionFelEnergy)
---env.use"Spell".ApplyAura(nil, enemy, const.Auras.ArcaneIntellect, nil, { duration = 60*60 })
---env.use"Spell".ApplyAura(const.Spells.Corruption, enemy, const.Auras.Corruption, tu, { duration = 60*60 })
-
---Writhe in Agony
 tu.player.talents:change(tu.charsheet, const.TalentTier.Level10, const.TalentChoice.Left)
 
-print("Enemy HP:", enemy.primaryResourceAmount)
-print("Fel Energy:", tu.tertiaryResourceAmount)
-print("Casting Agony:", tu:wantToCast(const.Spells.Agony))
-print("Skipping 2s.")
-env.UnreplicatedTimeTravel(2)
-print("Casting Corruption:", tu:wantToCast(const.Spells.Corruption))
-print("Agony has", enemy:findFirstAura(const.Auras.Agony).stacks, " stacks and will remain for:", const.AuraTimer(enemy:findFirstAura(const.Auras.Agony):remainingTime()))
-print("Skipping 12s.")
-env.UnreplicatedTimeTravel(12)
-print("Enemy HP:", enemy.primaryResourceAmount)
-print("Agony has", enemy:findFirstAura(const.Auras.Agony).stacks, " stacks and will remain for:", const.AuraTimer(enemy:findFirstAura(const.Auras.Agony):remainingTime()))
-print("Casting Agony:", tu:wantToCast(const.Spells.Agony))
-print("Agony has", enemy:findFirstAura(const.Auras.Agony).stacks, " stacks and will remain for:", const.AuraTimer(enemy:findFirstAura(const.Auras.Agony):remainingTime()))
-print("Fel Energy:", tu.tertiaryResourceAmount)
+local function printTooltip(lines)
+    local length = 0
+    for _, line in ipairs(lines) do
+        if #line > length then
+            length = #line
+        end
+    end
+    print(" " .. ("_"):rep(length) .. " ")
+    for _, line in ipairs(lines) do
+        print("|" .. line .. (" "):rep(length - #line) .. "|")
+    end
+    print("|" .. ("_"):rep(length) .. "|")
+end
+
+local function strtolines(str)
+    local lines = {}
+    for line in str:gmatch("[^\n]+") do
+        table.insert(lines, line)
+    end
+    return lines
+end
+
+local testTooltip
+
+local subject = const.Spells.Corruption
+testTooltip = subject.tooltip(tu.charsheet)
+testTooltip = strtolines(testTooltip)
+table.insert(testTooltip, 1, subject.name)
+
+printTooltip(testTooltip)

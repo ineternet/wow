@@ -161,6 +161,12 @@ local function applyAura(args)
     end
 end
 
+local function channelAura(args) --TODO
+    return function(spell, castingUnit, spellTarget, _)
+        Spell.ApplyAura(spell, spellTarget, args.aura, castingUnit, args.auraData)
+    end
+end
+
 Spell.RemoveAura = function(fromUnit, auraOrArg, dispelMode, specificAmount, removalMode, onlyRemoveThisType, onlyCausedByThisUnit)
     if not dispelMode then
         dispelMode = DispelMode.All
@@ -973,11 +979,12 @@ Spells.DrainLife:assign({
     end,
     icon = "rbxassetid://1337",
     resource = Resources.FelEnergy,
-    resourceCost = 0.01,
+    resourceCost = 0,
     cooldown = 0,
     gcd = GCD.Standard,
     castType = CastType.Channeled,
     channelDuration = 6,
+    channelCost = 10,
     targetType = TargetType.Enemy,
     range = Range.Long,
     modifyAttack = false,

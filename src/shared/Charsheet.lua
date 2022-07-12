@@ -1,7 +1,6 @@
 setfenv(1, require(script.Parent.Global))
 
 local Charsheet = use"Object".inherit"Charsheet"
---local Charclass = require(script.Parent.Charclass)
 
 --Stat def for unit type (paper doll)
 
@@ -15,12 +14,11 @@ Charsheet.new = Constructor(Charsheet, {
     equipment = use"Equipment".new,
 
     spellbook = use"Spellbook".new,
-
-    --unit = nil
 }, function(self)
-    --self.equipment = ref(use"Equipment".new())
+
 end)
 
+--Whether this unit can wield 1H main-hands in the off-hand slot.
 Charsheet.canDualWield = function(self)
     return self.class == Classes.Warrior or self.class == Classes.Rogue
 end
@@ -28,6 +26,7 @@ end
 Charsheet.baseMana = function(self)
     local value = BaseMana[self.level]
     if self.class == Classes.Mage or self.class == Classes.Priest or self.class == Classes.Warlock then
+        --Caster classes get more base mana.
         value = value * 5
     end
     return value
@@ -124,6 +123,7 @@ Charsheet.abilityDamage = function(self, unit, isMainHand)
     return value
 end
 
+--This is much simpler than the real calculation
 local function diminish(x)
     if x > 1.2 then
         return diminish(1.2)
@@ -190,6 +190,7 @@ Charsheet.armor = function(self, unit)
     return value
 end
 
+--Percentage of physical damage mitigated by armor
 Charsheet.physicalDR = function(self, unit, enemySheet)
     local armor = self:armor(unit)
     return (armor / (85 * enemySheet.level + armor + 400))
@@ -203,13 +204,22 @@ Charsheet.totalOffHandDamage = function(self)
     return self.equipment.slots[Slots.OffHand]:flat("weaponDamage")
 end
 
-Charsheet.gcd = function(self, unit, gcdEnum) --Return GCD length, considering haste.
+--Return GCD length in seconds, considering haste.
+Charsheet.gcd = function(self, unit, gcdEnum)
     local haste = self:haste(unit)
     local gcd = GCDTimeout[gcdEnum]
     return gcd / (1 + haste)
 end
 
-
+--[[
+    Calculate how much damage a unit will actually take from a given amount of damage.
+    @param unit The unit this charsheet belongs to.
+    @param causerSheet The sheet of the unit that caused the damage.
+    @param damage The amount of damage to be taken.
+    @param school Damage school
+    @param isMassive Whether this damage is meant to deal a lot of damage - some mitigations are ignored.
+    @return The amount of damage actually taken.
+]]
 Charsheet.mitigate = function(self, unit, causerSheet, damage, school, isMassive)
     if school == Schools.Physical then
         local dr = self:physicalDR(unit, causerSheet or { level = self.level })
@@ -219,6 +229,7 @@ Charsheet.mitigate = function(self, unit, causerSheet, damage, school, isMassive
     return damage
 end
 
+--How much damage a critical strike will do.
 Charsheet.critMultiplier = function(self, isPvp)
     local val = 2
     if isPvp then
@@ -243,6 +254,7 @@ Charsheet.focusRegen = function(self)
     return 0.2
 end
 
+--How many seconds before a unit that left combat will start regenerating with out-of-combat regeneration.
 Charsheet.combatRegenDelay = function(self)
     return 5
 end

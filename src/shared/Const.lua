@@ -115,7 +115,7 @@ const = {
         Rare = Color3.new(0.196078, 0.380392, 0.878431),
         Epic = Color3.new(0.635294, 0.149019, 0.733333),
         Legendary = Color3.new(0.972549, 0.588235, 0.011764),
-        Mythical = Color3.new(0.905882, 0.054901, 0.521568),
+        Mythical = Color3.new(0.266666, 0.105882, 0.847058),
         Artifact = Color3.new(0.968627, 0.862745, 0.568627),
         Account = Color3.new(0.203921, 0.870588, 0.960784),
         Corp = Color3.new(0.203921, 0.870588, 0.960784),
@@ -168,13 +168,6 @@ const = {
         Disorient = 8,
         Incapacitate = 9,
     },
-    --[[Enchants = { --IDs are indices of this table (i.e. auto-increment)
-        MinorStamina = enchant {
-            mod = {
-                stamina = 0.1,
-            }
-        }
-    },]]
     PrimaryStatIndex = { --Index of the primary stat in the stat array, only for ease of use
         Strength = 1, Agility = 2, Stamina = 3, Intellect = 4,
         strength = 1, agility = 2, stamina = 3, intellect = 4,
@@ -224,7 +217,7 @@ const = {
         --Side note: Spells that are first cast and then channeled should be split into two spells:
             --The first spell is triggered by the user. For players this one is shown in the spellbook.
             --The second spell is the channeled part and is considered internal. It is automatically cast when the first spell is finished.
-        Passive = 3, --Passive spells. Should be triggered with :cast but can't be cast by user input.
+        Passive = 3, --Passive spells. Can be triggered with :cast, can't be cast by user input. Often these have no functionality on their own and are just checked by other spells.
     },
     TargetType = { --Spell target types
         Self = 0, --Only self
@@ -438,6 +431,7 @@ const.FacingRules = { --Default facing rules
     [const.TargetType.Area] = true,
 }
 
+--TODO: move this to Global.lua
 const.AuraTimer = function(seconds)
     --Return a string that represents the time up to weeks, for aura display.
     if seconds < 60 then
@@ -489,6 +483,7 @@ end
 
 local metaItemMt = function(scriptName)
     return {
+        --{} is the missing item cache
         __index = metaCacheFn({}, scriptName),
         __newindex = metaIndexFn,
     }
