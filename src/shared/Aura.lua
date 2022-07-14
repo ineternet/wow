@@ -37,11 +37,8 @@ AuraInstance.tick = function(self, deltaTime, owner)
         hasted = 1 + self.causer.charsheet:haste(self.causer)
     end
 
-    
-    local lastTick = false
     if self.elapsedPart >= 1 then
         self.invalidate = true
-        lastTick = true
     end
 
     if self.aura.onTick then
@@ -55,10 +52,14 @@ AuraInstance.tick = function(self, deltaTime, owner)
         if nextLogicalTick > 1 and self.remainingTicks == 1 then
             partialTick = (1 - nextLogicalTick) * ticks
         end
-        if self.elapsedPart >= nextLogicalTick then
-            self.trulyElapsedPart = self.elapsedPart
-            self.remainingTicks = self.remainingTicks - 1
-            self.aura.onTick(self, deltaTime, owner, partialTick)
+        local elapsed = self.elapsedPart
+        if elapsed >= nextLogicalTick then
+            repeat --Multi-ticks for when haste overtakes heartbeat tick rate
+                self.trulyElapsedPart = elapsed
+                self.remainingTicks = self.remainingTicks - 1
+                self.aura.onTick(self, deltaTime, owner, partialTick)
+                nextLogicalTick = (1 + (ticks - self.remainingTicks)) / ticks
+            until elapsed < nextLogicalTick
         end
     end
 
@@ -329,8 +330,8 @@ Auras.Vicious:assign({
     override = AuraOverrideBehavior.Ignore,
 })
 
-Auras.WarlockArmorProfiency = Aura.new()
-Auras.WarlockArmorProfiency:assign({
+Auras.WarlockArmorProficiency = Aura.new()
+Auras.WarlockArmorProficiency:assign({
     name = "Warlock Armor Proficiency",
     tooltip = function(sheet)
         local str = "Primary stats increased by %s."
@@ -345,6 +346,37 @@ Auras.WarlockArmorProfiency:assign({
     effectType = AuraDispelType.None,
     auraType = AuraType.Hidden,
     decayType = AuraDecayType.None,
+    override = AuraOverrideBehavior.ClearOldApplyNew,
+})
+
+Auras.Bloodlust = Aura.new()
+Auras.Bloodlust:assign({
+    name = "Bloodlust",
+    tooltip = function(sheet)
+        local str = "Haste increased by %s%%."
+        return str
+    end,
+    icon = "rbxassetid://1337",
+    statMod = {
+        haste = 0.3,
+    },
+    effectType = AuraDispelType.None,
+    auraType = AuraType.Buff,
+    decayType = AuraDecayType.Timed,
+    override = AuraOverrideBehavior.ClearOldApplyNew,
+})
+
+Auras.Exhaustion = Aura.new()
+Auras.Exhaustion:assign({
+    name = "Exhaustion",
+    tooltip = function(sheet)
+        local str = "Cannot benefit from Bloodlust."
+        return str
+    end,
+    icon = "rbxassetid://1337",
+    effectType = AuraDispelType.None,
+    auraType = AuraType.Debuff,
+    decayType = AuraDecayType.Timed,
     override = AuraOverrideBehavior.ClearOldApplyNew,
 })
 

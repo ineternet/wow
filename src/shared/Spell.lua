@@ -278,7 +278,6 @@ end
 
 local function multi(args) --Wrap multiple effects in a single function, preserving order
     return function(...)
-        print("Multicasting with args", ...)
         for i, v in ipairs(args) do
             v(...)
         end
@@ -292,6 +291,22 @@ local function ifHasAura(aura)
             local compoundReturn = false
 
             if castingUnit:hasAura(aura) then
+                compoundReturn = args.dropFollowingEffects
+                compoundReturn = effect(spell, castingUnit, spellTarget, spellLocation) or compoundReturn
+            end
+
+            return compoundReturn
+        end
+    end
+end
+
+local function ifNotHasAura(aura)
+    return function(args)
+        return function(spell, castingUnit, spellTarget, spellLocation)
+            local effect = args.effect or args[1]
+            local compoundReturn = false
+
+            if not castingUnit:hasAura(aura) then
                 compoundReturn = args.dropFollowingEffects
                 compoundReturn = effect(spell, castingUnit, spellTarget, spellLocation) or compoundReturn
             end
@@ -362,6 +377,16 @@ local collectors = {
             end
         end
         return {spellTarget}
+    end,
+    AllPartyMembers = function(_, castingUnit, _, _)
+        if not castingUnit or not castingUnit.is or not castingUnit:is"PlayerUnit" then
+            --Caster has to be a player
+        elseif castingUnit.is and castingUnit:is("PlayerUnit") then
+            if castingUnit.party then
+                return castingUnit.party.units.noproxy
+            end
+        end
+        return {castingUnit}
     end
 }
 
@@ -1029,6 +1054,45 @@ Spells.WarlockArmorProfiency:assign({
     },
 })
 
+Spells.Bloodlust = Spell.new()
+Spells.Bloodlust:assign({
+    name = "Bloodlust",
+    tooltip = function(sheet)
+        local str = "For the next %s%% seconds, your Haste is increased by %s%%."
+        str = str .. Linebreak .. "If cast while in a party, all party members gain the bonus."
+        return str
+    end,
+    icon = "rbxassetid://1337",
+    castType = CastType.Instant,
+    cooldown = 5 * 60,
+    gcd = GCD.None,
+    targetType = TargetType.Self,
+    range = Range.Self,
+    school = Schools.Physical,
+    effects = {
+        onEach {
+            collector = collectors.AllPartyMembers,
+            effect = {
+                ifNotHasAura(Auras.Exhaustion) {
+                    multi {
+                        applyAura {
+                            aura = Auras.Bloodlust,
+                            auraData = {
+                                duration = 30,
+                            },
+                        },
+                        applyAura {
+                            aura = Auras.Exhaustion,
+                            auraData = {
+                                duration = 10 * 60,
+                            },
+                        }
+                    }
+                }
+            },
+        }
+    },
+})
 
 
 
