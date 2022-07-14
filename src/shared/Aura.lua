@@ -329,4 +329,23 @@ Auras.Vicious:assign({
     override = AuraOverrideBehavior.Ignore,
 })
 
+Auras.WarlockArmorProfiency = Aura.new()
+Auras.WarlockArmorProfiency:assign({
+    name = "Warlock Armor Proficiency",
+    tooltip = function(sheet)
+        local str = "Primary stats increased by %s."
+        return str
+    end,
+    icon = "rbxassetid://1337",
+    statMod = {
+        strength = 0.05,
+        agility = 0.05,
+        intellect = 0.05,
+    },
+    effectType = AuraDispelType.None,
+    auraType = AuraType.Hidden,
+    decayType = AuraDecayType.None,
+    override = AuraOverrideBehavior.ClearOldApplyNew,
+})
+
 return Aura

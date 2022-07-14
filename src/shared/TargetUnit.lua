@@ -13,9 +13,12 @@ TargetUnit.new = Constructor(TargetUnit, {
     auras = {}, --Auras this unit is affected by
     castAuras = {}, --Auras this unit has cast on others/itself
 
-    charsheet = use"Charsheet".new,
-}, function(self)
+    charsheet = nil,
+}, function(self, charsheet)
+    self.charsheet = charsheet
     self.charsheet.spellbook:updateRaceSpells(self.charsheet)
+    self.charsheet.spellbook:updateClassSpells(self.charsheet)
+    self.charsheet.spellbook:updateSpecSpells(self.charsheet)
     self.charsheet.spellbook:onCreateUnit(self)
 end)
 

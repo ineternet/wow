@@ -1013,7 +1013,21 @@ Spells.Vicious:assign({
     permanentAura = Auras.Vicious,
 })
 
-
+Spells.WarlockArmorProfiency = Spell.new()
+Spells.WarlockArmorProfiency:assign({
+    name = "Armor Proficiency",
+    tooltip = function(sheet)
+        local str = "Warlocks can wear cloth armor."
+        str = str .. Linebreak .. "Starting at level 24, gain %s%% increased primary stats for wearing full cloth armor."
+        return str
+    end,
+    icon = "rbxassetid://1337",
+    castType = CastType.Passive,
+    school = Schools.Physical,
+    effect = applyAura {
+        aura = Auras.WarlockArmorProficiency
+    },
+})
 
 
 

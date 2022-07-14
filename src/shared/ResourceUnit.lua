@@ -129,7 +129,7 @@ ResourceUnit.new = Constructor(ResourceUnit, {
 
     soulFragmentRegenTick = utctime(),
 
-}, function(self)
+}, function(self, charsheet)
     table.insert(self.eventConnections, ConnectToHeartbeat(function(dt)
         self:tick(dt)
     end))

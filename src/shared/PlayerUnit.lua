@@ -6,7 +6,7 @@ local PlayerUnit = use"ResourceUnit".inherit"PlayerUnit"
 
 PlayerUnit.new = Constructor(PlayerUnit, {
     player = nil, --PlayerDesc for this unit
-}, function(self, playerdesc)
+}, function(self, charsheet, playerdesc)
     self.player = playerdesc
 end)
 
@@ -15,7 +15,7 @@ PlayerUnit.tick = function(self, deltaTime)
     --Class-specific ticks
 
     --Affliction Warlock: Corruption Fel Energy generation
-    if self.charsheet.spec == Specs.Affliction then
+    if self.charsheet.spellbook:hasSpell(Spells.AfflictionFelEnergy) then
         local regainedFE = 0
         for _, aura in ipairs(self.castAuras.noproxy) do
             if not aura.invalidate and aura.aura.id == Auras.Corruption.id then

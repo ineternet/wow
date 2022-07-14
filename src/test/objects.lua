@@ -26,21 +26,25 @@ local plr = playerdesc.new(nil, "", { --Mock DB entry
     },
 })
 
-local tu = playerunits.new(nil, plr)
-tu.charsheet.class = const.Classes.Warlock
-tu.charsheet.spec = const.Specs.Affliction
-tu.charsheet.race = const.Races.Werebeast
-tu.charsheet.level = 17
+local cs = habitat:require(root.Charsheet).new()
+cs.class = const.Classes.Warlock
+cs.spec = const.Specs.Affliction
+cs.race = const.Races.Werebeast
+cs.level = 17
+
+local tu = playerunits.new(nil, cs, plr)
 tu:updateClassResources()
 tu.primaryResourceAmount = tu.primaryResourceMaximum
 tu.secondaryResourceAmount = tu.secondaryResourceMaximum
 
-local enemy = units.new()
-enemy.charsheet.class = const.Classes.Warrior
-enemy.charsheet.spec = const.Specs.None
-enemy.charsheet.race = const.Races.None
-enemy.charsheet.level = 14
-enemy.charsheet.healthRegen = const.NoResourceRegeneration
+local ecs = habitat:require(root.Charsheet).new()
+ecs.class = const.Classes.Warrior
+ecs.spec = const.Specs.None
+ecs.race = const.Races.None
+ecs.level = 14
+ecs.healthRegen = const.NoResourceRegeneration
+
+local enemy = units.new(nil, cs)
 enemy.primaryResource = const.Resources.Health
 enemy.primaryResourceMaximum = 400
 enemy.primaryResourceAmount = 400
@@ -60,15 +64,6 @@ print("Stamina:", tu.charsheet:stamina(tu))
 local hastering = items.newOf(const.Items.HasteRing)
 local _ = tu.charsheet.equipment:swap(const.Slots.Ring1, hastering)
 
-
-tu.charsheet.spellbook:learn(const.Spells.StartAttack)
-tu.charsheet.spellbook:learn(const.Spells.FireBlast)
-tu.charsheet.spellbook:learn(const.Spells.Pyroblast)
-tu.charsheet.spellbook:learn(const.Spells.Spellsteal)
-tu.charsheet.spellbook:learn(const.Spells.Kleptomancy)
-tu.charsheet.spellbook:learn(const.Spells.Corruption)
-tu.charsheet.spellbook:learn(const.Spells.Agony)
-tu.charsheet.spellbook:learn(const.Spells.AfflictionFelEnergy)
 --env.use"Spell".ApplyAura(nil, enemy, const.Auras.ArcaneIntellect, nil, { duration = 60*60 })
 --env.use"Spell".ApplyAura(const.Spells.Corruption, enemy, const.Auras.Corruption, tu, { duration = 60*60 })
 

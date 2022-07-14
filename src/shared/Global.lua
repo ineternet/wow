@@ -250,7 +250,7 @@ Global.Constructor = function(ofType, withValues, postConstructor)
             local mo = sub or Global.__MakeObject(ofType)
             local baseConstructor = ofType.super.new
             if baseConstructor and baseConstructor ~= Global.AbstractClassConstructor then
-                mo = baseConstructor(mo)
+                mo = baseConstructor(mo, ...)
             end
             if type(withValues) == "table" then
                 for k, v in pairs(withValues) do

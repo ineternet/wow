@@ -1,3 +1,4 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 setfenv(1, require(script.Parent.Global))
 
 local Spellbook = use"Object".inherit"Spellbook"
@@ -46,11 +47,52 @@ Spellbook.unlearn = function(self, spell)
     return false, "Spell not known"
 end
 
-Spellbook.updateRaceSpells = function(self, sheet)
-    local race = sheet.race
-    --TODO
-    self:learn(Spells.Vicious)
+local raceSpellbooks = {
+    [Races.None] = {},
+    [Races.Werebeast] = {
+        [Spells.Vicious] = 1,
+    }
+}
+
+local classSpellbooks = {
+    [Classes.Classless] = {},
+    [Classes.Warlock] = {
+        [Spells.StartAttack] = 1,
+        [Spells.Corruption] = 1,
+        [Spells.Agony] = 4,
+    }
+}
+
+local specSpellbooks = {
+    [Specs.None] = {},
+    [Specs.Affliction] = {
+        [Spells.AfflictionFelEnergy] = 1
+    }
+}
+
+local function genericLearnSpellbook(fromTable, check)
+    return function(self, sheet)
+        --Unlearn spells from other tables, and too high level spells
+        for ch, book in pairs(fromTable) do
+            for spell, level in ipairs(book) do
+                if ch ~= sheet[check] or level > sheet.level then
+                    self:unlearn(spell)
+                end
+            end
+        end
+
+        --Learn known spells
+        for spell, level in pairs(fromTable[sheet[check]]) do
+            if level <= sheet.level then
+                self:learn(spell)
+            end
+        end
+    end
 end
+
+Spellbook.updateRaceSpells = genericLearnSpellbook(raceSpellbooks, "race")
+Spellbook.updateClassSpells = genericLearnSpellbook(classSpellbooks, "class")
+Spellbook.updateSpecSpells = genericLearnSpellbook(specSpellbooks, "spec")
 
 Spellbook.ready = function(self, spell)
     assertObj(spell)
@@ -158,6 +200,15 @@ Spellbook.onSpellCritical = function(self, unit, spell, spellTarget, spellLocati
     end
 
     
+end
+
+Spellbook.onEquipmentChange = function(self, unit)
+    --Fired when equipment changes.
+
+    --All classes: Apply or remove Armor Proficiency
+    if self:hasSpell(Spells.WarlockArmorProfiency) then
+        --TODO
+    end
 end
 
 return Spellbook
