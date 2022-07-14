@@ -312,4 +312,21 @@ Auras.Kicked:assign({
     override = AuraOverrideBehavior.DiminishingReturns,
 })
 
+Auras.Vicious = Aura.new()
+Auras.Vicious:assign({
+    name = "Vicious",
+    tooltip = function(sheet)
+        local str = "Haste increased by %s%%."
+        return str
+    end,
+    icon = "rbxassetid://1337",
+    statMod = {
+        haste = 0.01,
+    },
+    effectType = AuraDispelType.None,
+    auraType = AuraType.Hidden,
+    decayType = AuraDecayType.None,
+    override = AuraOverrideBehavior.Ignore,
+})
+
 return Aura

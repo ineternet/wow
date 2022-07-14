@@ -46,6 +46,12 @@ Spellbook.unlearn = function(self, spell)
     return false, "Spell not known"
 end
 
+Spellbook.updateRaceSpells = function(self, sheet)
+    local race = sheet.race
+    --TODO
+    self:learn(Spells.Vicious)
+end
+
 Spellbook.ready = function(self, spell)
     assertObj(spell)
     spell:assertIs("Spell")
@@ -88,6 +94,15 @@ Spellbook.tick = function(self, deltaTime)
     end
 
     Spellbook.super.tick(self, deltaTime)
+end
+
+Spellbook.onCreateUnit = function(self, unit)
+    for _, spellbookEntry in ipairs(self.spells) do
+        local spell = spellbookEntry.spell
+        if spell.castType == CastType.PermanentAura then
+            use"Spell".ApplyAura(spell, unit, spell.permanentAura, unit)
+        end
+    end
 end
 
 Spellbook.postCast = function(self, spell, unit)

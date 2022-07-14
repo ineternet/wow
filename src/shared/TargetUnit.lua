@@ -14,7 +14,10 @@ TargetUnit.new = Constructor(TargetUnit, {
     castAuras = {}, --Auras this unit has cast on others/itself
 
     charsheet = use"Charsheet".new,
-})
+}, function(self)
+    self.charsheet.spellbook:updateRaceSpells(self.charsheet)
+    self.charsheet.spellbook:onCreateUnit(self)
+end)
 
 TargetUnit.hasAura = function(self, auradef, byCauser)
     assertObj(auradef)

@@ -218,6 +218,7 @@ const = {
             --The first spell is triggered by the user. For players this one is shown in the spellbook.
             --The second spell is the channeled part and is considered internal. It is automatically cast when the first spell is finished.
         Passive = 3, --Passive spells. Can be triggered with :cast, can't be cast by user input. Often these have no functionality on their own and are just checked by other spells.
+        PermanentAura = 4, --Spells that apply a permanent aura to the spellbook owner.
     },
     TargetType = { --Spell target types
         Self = 0, --Only self

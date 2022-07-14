@@ -64,6 +64,7 @@ local function area(args)
 end
 
 Spell.ApplyAura = function(spell, toUnit, aura, causer, auraData)
+    auraData = auraData or {duration = math.huge}
     local overrideBehavior = auraData.override or aura.override or AuraOverrideBehavior.Ignore
 
     local overrides = {
@@ -999,7 +1000,18 @@ Spells.DrainLife:assign({
     },
 })
 
-
+Spells.Vicious = Spell.new()
+Spells.Vicious:assign({
+    name = "Vicious",
+    tooltip = function(sheet)
+        local str = "Gain %s%% Haste."
+        return str
+    end,
+    icon = "rbxassetid://1337",
+    castType = CastType.PermanentAura,
+    school = Schools.Physical,
+    permanentAura = Auras.Vicious,
+})
 
 
 
