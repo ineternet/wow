@@ -27,6 +27,15 @@ Spell.SchoolDamage = function(spell, castingUnit, spellTarget, damage, school, p
     }
 end
 
+Spell.SchoolHeal = function(spell, castingUnit, spellTarget, damage, school, pvpModifier, forceCrit)
+    --TODO
+    return {
+        crit = false,
+        isPvp = false,
+        finalDamage = 0
+    }
+end
+
 local function effectOnTargetModel(args)
     return function(_, _, spellTarget, _)
         if _VERSION ~= "Luau" then

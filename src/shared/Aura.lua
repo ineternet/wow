@@ -9,6 +9,27 @@ local function auraDummy(spell, castingUnit, spellTarget, spellLocation)
 
 end
 
+local function schoolDotWithLifesteal(school)
+    return function(aura, deltaTime, owner, tickStrength)
+        local damage = (aura.aura.damagePerSecond(aura.causer, aura.causer.charsheet, aura)) * tickStrength
+        local result = use"Spell".SchoolDamage(aura.spellSource, aura.causer, owner, damage, school, 1)
+        if result.finalDamage and result.finalDamage > 0 then
+            aura.causer.charsheet.spellbook:onDealDamage(aura.causer, owner, result.finalDamage, school, aura)
+            use"Spell".SchoolHeal(
+                aura.spellSource,
+                aura.causer,
+                aura.causer,
+                aura.aura.lifesteal(
+                    aura.causer,
+                    aura.causer.charsheet,aura,
+                    result
+                ),
+                school,
+                1)
+        end
+    end
+end
+
 local function schoolDot(school)
     return function(aura, deltaTime, owner, tickStrength)
         local damage = (aura.aura.damagePerSecond(aura.causer, aura.causer.charsheet, aura)) * tickStrength
@@ -295,6 +316,28 @@ Auras.Agony:assign({
     affectedByCauserHaste = true,
     damagePerSecond = function(caster, sheet, auraInstance)
         return (0.2 / 18) * auraInstance.stacks * sheet:spellPower(caster)
+    end
+})
+
+Auras.DrainLife = Aura.new()
+Auras.DrainLife:assign({
+    name = "Drain Life",
+    tooltip = function(sheet)
+        local str = "Suffering %s Shadow damage every %s. Some of the damage is transferred as healing to the caster."
+        return str
+    end,
+    onTick = schoolDotWithLifesteal(Schools.Shadow),
+    icon = "rbxassetid://1337",
+    effectType = AuraDispelType.None,
+    auraType = AuraType.Debuff,
+    decayType = AuraDecayType.Timed,
+    override = AuraOverrideBehavior.ClearOldApplyNew,
+    affectedByCauserHaste = true,
+    damagePerSecond = function(caster, sheet, auraInstance)
+        return (3/6) * sheet:spellPower(caster)
+    end,
+    lifesteal = function(caster, sheet, auraInstance, result)
+        return result.finalDamage * 0.5
     end
 })
 

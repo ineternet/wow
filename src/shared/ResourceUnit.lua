@@ -308,7 +308,30 @@ ResourceUnit.hardCast = function(self, spell, spellTarget, spellLocation) --For 
 end
 
 ResourceUnit.channelCast = function(self, spell, spellTarget, spellLocation) --For channels
-    error("Channel casts not yet implemented.")
+    self.currentAction = Actions.Channel
+    self.actionBegin = utctime()
+    self.actionEnd = utctime() + (spell.channelDuration or 0)
+    self.gcdEnd = utctime() + self.charsheet:gcd(self, spell.gcd or GCD.None)
+    self.lastSpell = ref(spell)
+
+    local interrupted = false
+    self.interruptCast = function()
+        interrupted = true
+    end
+    if spell.resourceCost then
+        self:deltaResourceAmount(spell.resource, -self:resolveRaw(spell.resource, resolveNumFn(spell.resourceCost, self.charsheet)))
+    end
+    local castDuration = self.actionEnd - utctime()
+    castDuration = castDuration / (1 + self.charsheet:haste(self))
+    for order, effect in ipairs(spell.effects) do
+        if effect(spell, self, spellTarget, spellLocation) then
+            break
+        end
+    end
+
+    
+
+    return true
 end
 
 ResourceUnit.instantCast = function(self, spell, spellTarget, spellLocation) --For instant casts

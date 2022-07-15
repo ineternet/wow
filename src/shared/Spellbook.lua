@@ -60,6 +60,7 @@ local classSpellbooks = {
         [Spells.StartAttack] = 1,
         [Spells.Corruption] = 1,
         [Spells.Agony] = 4,
+        [Spells.DrainLife] = 1,
     }
 }
 
