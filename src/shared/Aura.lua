@@ -373,9 +373,8 @@ Auras.Vicious:assign({
     override = AuraOverrideBehavior.Ignore,
 })
 
-Auras.WarlockArmorProficiency = Aura.new()
-Auras.WarlockArmorProficiency:assign({
-    name = "Warlock Armor Proficiency",
+local generalArmorProf = {
+    name = "Armor Proficiency",
     tooltip = function(sheet)
         local str = "Primary stats increased by %s."
         return str
@@ -390,7 +389,23 @@ Auras.WarlockArmorProficiency:assign({
     auraType = AuraType.Hidden,
     decayType = AuraDecayType.None,
     override = AuraOverrideBehavior.ClearOldApplyNew,
-})
+}
+
+Auras.WarriorArmorProficiency = Aura.new()
+Auras.WarriorArmorProficiency:assign(generalArmorProf)
+Auras.MageArmorProficiency = Aura.new()
+Auras.MageArmorProficiency:assign(generalArmorProf)
+Auras.RogueArmorProficiency = Aura.new()
+Auras.RogueArmorProficiency:assign(generalArmorProf)
+Auras.PaladinArmorProficiency = Aura.new()
+Auras.PaladinArmorProficiency:assign(generalArmorProf)
+Auras.HunterArmorProficiency = Aura.new()
+Auras.HunterArmorProficiency:assign(generalArmorProf)
+Auras.DruidArmorProficiency = Aura.new()
+Auras.DruidArmorProficiency:assign(generalArmorProf)
+Auras.WarlockArmorProficiency = Aura.new()
+Auras.WarlockArmorProficiency:assign(generalArmorProf)
+
 
 Auras.Bloodlust = Aura.new()
 Auras.Bloodlust:assign({

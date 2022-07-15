@@ -329,7 +329,7 @@ ResourceUnit.channelCast = function(self, spell, spellTarget, spellLocation) --F
         end
     end
 
-    
+
 
     return true
 end
@@ -578,6 +578,16 @@ ResourceUnit.takeDamage = function(self, damage, school, sourceUnit)
     if self.primaryResourceAmount <= 0 then
         self:die()
     end
+end
+
+ResourceUnit.receiveHeal = function(self, damage, school, sourceUnit)
+    assert(tonumber(damage), "Damage must be a number.")
+    assert(damage >= 0, "Damage must be positive.")
+    assert(school ~= nil, "School must be specified.")
+    assert(self:getPool(Resources.Health), "Cannot heal healthless unit.")
+    assert(self.primaryResourceAmount > 0, "Cannot heal dead unit.")
+
+    self.primaryResourceAmount = math.min(self.primaryResourceAmount + damage, self.primaryResourceMaximum)
 end
 
 ResourceUnit.aggroedUnits = function(self)

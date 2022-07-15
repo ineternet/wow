@@ -28,11 +28,23 @@ Spell.SchoolDamage = function(spell, castingUnit, spellTarget, damage, school, p
 end
 
 Spell.SchoolHeal = function(spell, castingUnit, spellTarget, damage, school, pvpModifier, forceCrit)
-    --TODO
+    local crit = forceCrit or castingUnit:procCrit(spell)
+    --TODO: PVP check has to depend on PVP status, not on the spell target
+    local isPvp = false
+    --local isPvp = spellTarget and spellTarget:is"PlayerUnit" and castingUnit and castingUnit:is"PlayerUnit"
+    if isPvp then
+        damage = damage * (pvpModifier or 1)
+    end
+    if crit then
+        local critm = castingUnit.charsheet:critMultiplier(isPvp)
+        damage = damage * (critm)
+    end
+    spellTarget:receiveHeal(damage, school)
+
     return {
-        crit = false,
-        isPvp = false,
-        finalDamage = 0
+        crit = crit,
+        isPvp = isPvp,
+        finalDamage = damage
     }
 end
 
@@ -62,7 +74,15 @@ end
 
 local function schoolHeal(args)
     return function(spell, castingUnit, spellTarget, _)
-
+        local damage = args.damage(castingUnit, castingUnit.charsheet)
+        local school = args.school
+        local result = Spell.SchoolHeal(spell, castingUnit, spellTarget, damage, school, args.pvp, args.forceCrit)
+        --[[if result.crit then
+            castingUnit.charsheet.spellbook:onSpellCritical(castingUnit, spell, spellTarget, _)
+        end
+        if result.finalDamage and result.finalDamage > 0 then
+            castingUnit.charsheet.spellbook:onDealHealing(castingUnit, spellTarget, result.finalDamage, school, spell)
+        end]]
     end
 end
 
@@ -1047,21 +1067,118 @@ Spells.Vicious:assign({
     permanentAura = Auras.Vicious,
 })
 
-Spells.WarlockArmorProfiency = Spell.new()
-Spells.WarlockArmorProfiency:assign({
+local generalArmorProf = {
     name = "Armor Proficiency",
-    tooltip = function(sheet)
-        local str = "Warlocks can wear cloth armor."
-        str = str .. Linebreak .. "Starting at level 24, gain %s%% increased primary stats for wearing full cloth armor."
-        return str
-    end,
     icon = "rbxassetid://1337",
     castType = CastType.Passive,
     school = Schools.Physical,
-    effect = applyAura {
-        aura = Auras.WarlockArmorProficiency
-    },
-})
+}
+
+do
+    Spells.WarriorArmorProfiency = Spell.new()
+    Spells.WarriorArmorProfiency:assign(generalArmorProf)
+    Spells.WarriorArmorProfiency:assign({
+        tooltip = function(sheet)
+            local str = "Warriors can wear cloth, leather and plate armor."
+            str = str .. Linebreak .. "Starting at level 24, gain %s%% increased primary stats for wearing full plate armor."
+            return str
+        end,
+        effect = applyAura {
+            aura = Auras.WarriorArmorProficiency
+        },
+    })
+
+    Spells.MageArmorProfiency = Spell.new()
+    Spells.MageArmorProfiency:assign(generalArmorProf)
+    Spells.MageArmorProfiency:assign({
+        tooltip = function(sheet)
+            local str = "Mages can wear cloth armor."
+            str = str .. Linebreak .. "Starting at level 24, gain %s%% increased primary stats for wearing full cloth armor."
+            return str
+        end,
+        effect = applyAura {
+            aura = Auras.MageArmorProficiency
+        },
+    })
+
+    Spells.HunterArmorProfiency = Spell.new()
+    Spells.HunterArmorProfiency:assign(generalArmorProf)
+    Spells.HunterArmorProfiency:assign({
+        tooltip = function(sheet)
+            local str = "Hunters can wear cloth and leather armor."
+            str = str .. Linebreak .. "Starting at level 24, gain %s%% increased primary stats for wearing full leather armor."
+            return str
+        end,
+        effect = applyAura {
+            aura = Auras.HunterArmorProficiency
+        },
+    })
+
+    Spells.PaladinArmorProfiency = Spell.new()
+    Spells.PaladinArmorProfiency:assign(generalArmorProf)
+    Spells.PaladinArmorProfiency:assign({
+        tooltip = function(sheet)
+            local str = "Paladins can wear cloth, leather and plate armor."
+            str = str .. Linebreak .. "Starting at level 24, gain %s%% increased primary stats for wearing full plate armor."
+            return str
+        end,
+        effect = applyAura {
+            aura = Auras.PaladinArmorProficiency
+        },
+    })
+
+    Spells.PriestArmorProfiency = Spell.new()
+    Spells.PriestArmorProfiency:assign(generalArmorProf)
+    Spells.PriestArmorProfiency:assign({
+        tooltip = function(sheet)
+            local str = "Priests can wear cloth armor."
+            str = str .. Linebreak .. "Starting at level 24, gain %s%% increased primary stats for wearing full cloth armor."
+            return str
+        end,
+        effect = applyAura {
+            aura = Auras.PriestArmorProficiency
+        },
+    })
+
+    Spells.RogueArmorProfiency = Spell.new()
+    Spells.RogueArmorProfiency:assign(generalArmorProf)
+    Spells.RogueArmorProfiency:assign({
+        tooltip = function(sheet)
+            local str = "Rogues can wear cloth and leather armor."
+            str = str .. Linebreak .. "Starting at level 24, gain %s%% increased primary stats for wearing full leather armor."
+            return str
+        end,
+        effect = applyAura {
+            aura = Auras.RogueArmorProficiency
+        },
+    })
+
+    Spells.DruidArmorProfiency = Spell.new()
+    Spells.DruidArmorProfiency:assign(generalArmorProf)
+    Spells.DruidArmorProfiency:assign({
+        tooltip = function(sheet)
+            local str = "Druids can wear cloth and leather armor."
+            str = str .. Linebreak .. "Starting at level 24, gain %s%% increased primary stats for wearing full leather armor."
+            return str
+        end,
+        effect = applyAura {
+            aura = Auras.DruidArmorProficiency
+        },
+    })
+
+    Spells.WarlockArmorProfiency = Spell.new()
+    Spells.WarlockArmorProfiency:assign(generalArmorProf)
+    Spells.WarlockArmorProfiency:assign({
+        tooltip = function(sheet)
+            local str = "Warlocks can wear cloth armor."
+            str = str .. Linebreak .. "Starting at level 24, gain %s%% increased primary stats for wearing full cloth armor."
+            return str
+        end,
+        effect = applyAura {
+            aura = Auras.WarlockArmorProficiency
+        },
+    })
+end
 
 Spells.Bloodlust = Spell.new()
 Spells.Bloodlust:assign({
