@@ -193,7 +193,15 @@ end
 
 local function channelAura(args) --TODO
     return function(spell, castingUnit, spellTarget, _)
-        Spell.ApplyAura(spell, spellTarget, args.aura, castingUnit, args.auraData)
+        local costdata = {}
+        for k, v in pairs(args.auraData) do
+            costdata[k] = v
+        end
+        costdata.resource = spell.resource
+        costdata.cost = spell.channelCost
+        local aresult = Spell.ApplyAura(spell, spellTarget, args.aura, castingUnit, args.auraData)
+        costdata.subaura = aresult
+        Spell.ApplyAura(spell, castingUnit, Auras.ResourceCostAura, castingUnit, costdata)
     end
 end
 
@@ -1074,7 +1082,7 @@ local generalArmorProf = {
     school = Schools.Physical,
 }
 
-do
+do --Armor proficiency fold
     Spells.WarriorArmorProfiency = Spell.new()
     Spells.WarriorArmorProfiency:assign(generalArmorProf)
     Spells.WarriorArmorProfiency:assign({

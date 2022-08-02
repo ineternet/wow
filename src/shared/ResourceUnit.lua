@@ -230,8 +230,13 @@ ResourceUnit.setResourceAmount = function(self, resourceType, amount)
     end
 end
 
+--@return false if the resource was capped (not changed by the full amount)
+--@return the amount that was actually added (or removed)
 ResourceUnit.deltaResourceAmount = function(self, resourceType, amount)
-    self:setResourceAmount(resourceType, math.clamp(self:getResourceAmount(resourceType) + amount, 0, self:getResourceMaximum(resourceType)))
+    local before = self:getResourceAmount(resourceType)
+    local clampedVal = math.clamp(before + amount, 0, self:getResourceMaximum(resourceType))
+    self:setResourceAmount(resourceType, clampedVal)
+    return clampedVal == before + amount, clampedVal - before
 end
 
 ResourceUnit.getResourceMaximum = function(self, resourceType)
@@ -287,6 +292,7 @@ ResourceUnit.hardCast = function(self, spell, spellTarget, spellLocation) --For 
 
     local interrupted = false
     self.interruptCast = function()
+        self.currentAction = (self.mainSwinging or self.offSwinging) and Actions.Swing or Actions.Idle
         interrupted = true
     end
     local castDuration = self.actionEnd - utctime()
@@ -316,6 +322,7 @@ ResourceUnit.channelCast = function(self, spell, spellTarget, spellLocation) --F
 
     local interrupted = false
     self.interruptCast = function()
+        self.currentAction = (self.mainSwinging or self.offSwinging) and Actions.Swing or Actions.Idle
         interrupted = true
     end
     if spell.resourceCost then

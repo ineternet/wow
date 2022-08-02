@@ -41,6 +41,14 @@ local function schoolDot(school)
     end
 end
 
+local function payResourceCost(aura, deltaTime, owner, tickStrength)
+    if not owner:deltaResourceAmount(aura.resource, -aura.cost * tickStrength) then
+        aura.invalidate = true
+        aura.subaura.invalidate = true
+        owner.interruptCast()
+    end
+end
+
 AuraInstance.tick = function(self, deltaTime, owner)
     if self.invalidate then
         return
@@ -339,6 +347,22 @@ Auras.DrainLife:assign({
     lifesteal = function(caster, sheet, auraInstance, result)
         return result.finalDamage * 0.5
     end
+})
+
+Auras.ResourceCostAura = Aura.new()
+Auras.ResourceCostAura:assign({
+    name = "Resource Cost",
+    tooltip = function(sheet)
+        local str = "Losing %s %s every %ss."
+        return str
+    end,
+    onTick = payResourceCost,
+    icon = "rbxassetid://1337",
+    effectType = AuraDispelType.None,
+    auraType = AuraType.Hidden,
+    decayType = AuraDecayType.Timed,
+    override = AuraOverrideBehavior.Ignore,
+    affectedByCauserHaste = false,
 })
 
 Auras.Kicked = Aura.new()
