@@ -291,12 +291,13 @@ local function projectile(args)
         fb.Anchored = false
         fb.CFrame = CFrame.new(start, goal)
         fb:SetNetworkOwner(game.Players:GetPlayers()[1])
-        local spd = 0.5
+        local fromMaxRangeRatio = (castingUnit:distanceFrom(spellTarget)) / spell.range
+        local spd = args.arriveWithin * fromMaxRangeRatio
         --fb.AlignOrientation
         fb.Velocity = (goal - start) / spd
         wait(spd)
         local fn = args.onArriveWorldModel
-        if fn then
+        if type(fn) == "function" then
             fn(workspace.Dummy)
         end
         fb.Anchored = true
