@@ -193,15 +193,9 @@ end
 
 local function channelAura(args) --TODO
     return function(spell, castingUnit, spellTarget, _)
-        local costdata = {}
-        for k, v in pairs(args.auraData) do
-            costdata[k] = v
-        end
-        costdata.resource = spell.resource
-        costdata.cost = spell.channelCost
-        local aresult = Spell.ApplyAura(spell, spellTarget, args.aura, castingUnit, args.auraData)
-        costdata.subaura = aresult
-        Spell.ApplyAura(spell, castingUnit, Auras.ResourceCostAura, castingUnit, costdata)
+        args.auraData.casterDrainResource = spell.resource
+        args.auraData.casterDrainAmount = spell.channelCost
+        Spell.ApplyAura(spell, spellTarget, args.aura, castingUnit, args.auraData)
     end
 end
 

@@ -239,6 +239,11 @@ ResourceUnit.deltaResourceAmount = function(self, resourceType, amount)
     return clampedVal == before + amount, clampedVal - before
 end
 
+--@return true if changing the resource by this much would NOT cause an underflow
+ResourceUnit.canAfford = function(self, resourceType, amount)
+    return self:getResourceAmount(resourceType) + amount >= 0
+end
+
 ResourceUnit.getResourceMaximum = function(self, resourceType)
     local pool = self:getPool(resourceType)
     if pool then

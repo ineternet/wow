@@ -35,7 +35,7 @@ cs.level = 17
 
 local tu = playerunits.new(nil, cs, plr)
 tu:updateClassResources()
-tu.primaryResourceAmount = tu.primaryResourceMaximum
+tu.primaryResourceAmount = tu.primaryResourceMaximum / 2
 tu.secondaryResourceAmount = tu.secondaryResourceMaximum
 
 local ecs = habitat:require(root.Charsheet).new()
@@ -81,8 +81,10 @@ env.UnreplicatedTimeTravel(3)
 print("Enemy HP:", enemy.primaryResourceAmount)
 print("Fel Energy:", tu.tertiaryResourceAmount)
 print("Decursing enemy:", spell.RemoveAura(enemy, const.AuraDispelType.Curse, const.DispelMode.All, nil, const.AuraRemovalMode.ByDispelType))
+print(("Caster HP: %d, %d%% of max"):format(tu.primaryResourceAmount, math.floor(tu.primaryResourceAmount/tu.primaryResourceMaximum*100)))
 print("Casting Drain Life:", tu:wantToCast(const.Spells.DrainLife))
 print("Skipping 5s.")
 env.UnreplicatedTimeTravel(5)
 print("Enemy HP:", enemy.primaryResourceAmount)
 print("Fel Energy:", tu.tertiaryResourceAmount)
+print(("Caster HP: %d, %d%% of max"):format(tu.primaryResourceAmount, math.floor(tu.primaryResourceAmount/tu.primaryResourceMaximum*100)))

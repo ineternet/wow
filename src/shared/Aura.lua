@@ -41,14 +41,6 @@ local function schoolDot(school)
     end
 end
 
-local function payResourceCost(aura, deltaTime, owner, tickStrength)
-    if not owner:deltaResourceAmount(aura.resource, -aura.cost * tickStrength) then
-        aura.invalidate = true
-        aura.subaura.invalidate = true
-        owner.interruptCast()
-    end
-end
-
 AuraInstance.tick = function(self, deltaTime, owner)
     if self.invalidate then
         return
@@ -66,8 +58,11 @@ AuraInstance.tick = function(self, deltaTime, owner)
         hasted = 1 + self.causer.charsheet:haste(self.causer)
     end
 
+    local cost = self.casterDrainAmount
+
     if self.elapsedPart >= 1 then
         self.invalidate = true
+        return
     end
 
     if self.aura.onTick then
@@ -86,6 +81,15 @@ AuraInstance.tick = function(self, deltaTime, owner)
             repeat --Multi-ticks for when haste overtakes heartbeat tick rate
                 self.trulyElapsedPart = elapsed
                 self.remainingTicks = self.remainingTicks - 1
+                if self.casterDrainResource then
+                    if not self.causer:canAfford(self.casterDrainResource, -self.casterDrainAmount * partialTick) then
+                        self.invalidate = true
+                        self.causer.interruptCast()
+                        return
+                    else
+                        self.causer:deltaResourceAmount(self.casterDrainResource, -self.casterDrainAmount * partialTick)
+                    end
+                end
                 self.aura.onTick(self, deltaTime, owner, partialTick)
                 nextLogicalTick = (1 + (ticks - self.remainingTicks)) / ticks
             until elapsed < nextLogicalTick
@@ -347,22 +351,6 @@ Auras.DrainLife:assign({
     lifesteal = function(caster, sheet, auraInstance, result)
         return result.finalDamage * 0.5
     end
-})
-
-Auras.ResourceCostAura = Aura.new()
-Auras.ResourceCostAura:assign({
-    name = "Resource Cost",
-    tooltip = function(sheet)
-        local str = "Losing %s %s every %ss."
-        return str
-    end,
-    onTick = payResourceCost,
-    icon = "rbxassetid://1337",
-    effectType = AuraDispelType.None,
-    auraType = AuraType.Hidden,
-    decayType = AuraDecayType.Timed,
-    override = AuraOverrideBehavior.Ignore,
-    affectedByCauserHaste = false,
 })
 
 Auras.Kicked = Aura.new()
