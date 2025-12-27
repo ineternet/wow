@@ -2,6 +2,7 @@ local units = require(game.ReplicatedStorage.Common.ResourceUnit)
 local items = require(game.ReplicatedStorage.Common.Item)
 local const = require(game.ReplicatedStorage.Common.Const)
 local env = require(game.ReplicatedStorage.Common.Global)
+local str = require(game.ReplicatedStorage.Common.Strings)
 
 local sg = game:GetService("Players").LocalPlayer.PlayerGui
 
@@ -40,7 +41,9 @@ local function rawtostring(t)
 local pblast = game:GetService("ReplicatedFirst").Pyroblast:Clone()
 local char, enemy
 local hit = 0
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local Timer = require(ReplicatedStorage.Common.Timer)
 RunService.Heartbeat:Connect(function(dt)
     --char:downstream()
     --enemy:downstream()
@@ -125,7 +128,7 @@ RunService.Heartbeat:Connect(function(dt)
     for i, aura in ipairs(char.auras) do
         if aura.aura then --Unsure what causes this, but it seems to work fine if we just ignore it.
             local a = astencil:Clone()
-            a.Text = aura.aura.name .. " (" .. const.AuraTimer(
+            a.Text = aura.aura.name .. " (" .. str.Timers.AuraTimer(
             aura:remainingTime()
         ) .. ")"
             a.Parent = acon
@@ -140,7 +143,7 @@ end)
 --Global.Remote:FireAllClients(Request.FullObjectDelta, toUpdateObjects)
 
 env.Remote.OnClientEvent:Connect(function(action, obj)
-    if action == env.Request.FullObjectDelta then
+    if action == const.Request.FullObjectDelta then
         for ref, obj in pairs(env.decompress(obj)) do
             if not env.UpdateFromDelta(ref, obj) then --Try to update existing object
                 --Object doesnt exist on this side.
@@ -181,20 +184,20 @@ game:GetService("UserInputService").InputBegan:Connect(function(io, gpc)
     if io.UserInputType == Enum.UserInputType.Keyboard then
         if io.KeyCode == Enum.KeyCode.One then
             --Fireball
-            env.Remote:FireServer(env.Request.CastSpell, env.Spells.Fireball.id)
+            env.Remote:FireServer(const.Request.CastSpell, const.Spells.Fireball.id)
         elseif io.KeyCode == Enum.KeyCode.Two then
             --Fire blast
-            env.Remote:FireServer(env.Request.CastSpell, env.Spells.FireBlast.id)
+            env.Remote:FireServer(const.Request.CastSpell, const.Spells.FireBlast.id)
         elseif io.KeyCode == Enum.KeyCode.Three then
             --Pyroblast
-            env.Remote:FireServer(env.Request.CastSpell, env.Spells.Pyroblast.id)
+            env.Remote:FireServer(const.Request.CastSpell, const.Spells.Pyroblast.id)
         elseif io.KeyCode == Enum.KeyCode.Four then
             --Arcane Intellect
-            env.Remote:FireServer(env.Request.CastSpell, env.Spells.ArcaneIntellect.id)
+            env.Remote:FireServer(const.Request.CastSpell, const.Spells.ArcaneIntellect.id)
         end
     elseif io.UserInputType == Enum.UserInputType.MouseButton2 then
         if io.UserInputState == Enum.UserInputState.Begin then
-            env.Remote:FireServer(env.Request.CastSpell, env.Spells.StartAttack.id)
+            env.Remote:FireServer(const.Request.CastSpell, const.Spells.StartAttack.id)
         end
     end
 end)

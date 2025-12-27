@@ -1,9 +1,12 @@
-setfenv(1, require(script.Parent.Global))
+local Global = require(script.Parent.Global)
+local Const = require(script.Parent.Const)
+local Items = Const.Items
+local Slots = Const.Slots
 
-local ItemDef = use"Object".inherit"ItemDef"
+local ItemDef = Global.use"Object".inherit"ItemDef"
 
 local logicalIncrement = 0
-ItemDef.new = Constructor(ItemDef, {
+ItemDef.new = Global.Constructor(ItemDef, {
     icon = "rbxassetid://1337",
     name = "",
 

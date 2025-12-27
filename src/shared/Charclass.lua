@@ -1,11 +1,11 @@
-setfenv(1, require(script.Parent.Global))
+local Global = require(script.Parent.Global)
 
-local Charclass = use"Object".inherit"Charclass"
+local Charclass = Global.use"Object".inherit"Charclass"
 
 --Stat def def for class types
 --Impl are defs
 
-Charclass.new = Constructor(Charclass, {
+Charclass.new = Global.Constructor(Charclass, {
 
 })
 

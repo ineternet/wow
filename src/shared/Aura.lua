@@ -1,21 +1,32 @@
-setfenv(1, require(script.Parent.Global))
+local Global = require(script.Parent.Global)
+local Const = require(script.Parent.Const)
+local Auras = Const.Auras
+local AuraType = Const.AuraType
+local AuraDecayType = Const.AuraDecayType
+local AuraDispelType = Const.AuraDispelType
+local AuraOverrideBehavior = Const.AuraOverrideBehavior
+local CastType = Const.CastType
+local DispelMode = Const.DispelMode
+local Schools = Const.Schools
+local Spells = Const.Spells
+local DRGroup = Const.DRGroup
 
-local Aura = use"Object".inherit"Aura"
-local AuraInstance = use"Object".inherit"AuraInstance"
+local Aura = Global.use"Object".inherit"Aura"
+local AuraInstance = Global.use"Object".inherit"AuraInstance"
 
 local Linebreak = "\n"
 
-local function auraDummy(spell, castingUnit, spellTarget, spellLocation)
+local function _auraDummy(spell, castingUnit, spellTarget, spellLocation)
 
 end
 
 local function schoolDotWithLifesteal(school)
     return function(aura, deltaTime, owner, tickStrength)
         local damage = (aura.aura.damagePerSecond(aura.causer, aura.causer.charsheet, aura)) * tickStrength
-        local result = use"Spell".SchoolDamage(aura.spellSource, aura.causer, owner, damage, school, 1)
+        local result = Global.use"Spell".SchoolDamage(aura.spellSource, aura.causer, owner, damage, school, 1)
         if result.finalDamage and result.finalDamage > 0 then
-            aura.causer.charsheet.spellbook:onDealDamage(aura.causer, owner, result.finalDamage, school, aura)
-            use"Spell".SchoolHeal(
+            aura.causer.spellbook:onDealDamage(aura.causer, owner, result.finalDamage, school, aura)
+            Global.use"Spell".SchoolHeal(
                 aura.spellSource,
                 aura.causer,
                 aura.causer,
@@ -33,10 +44,10 @@ end
 local function schoolDot(school)
     return function(aura, deltaTime, owner, tickStrength)
         local damage = (aura.aura.damagePerSecond(aura.causer, aura.causer.charsheet, aura)) * tickStrength
-        local result = use"Spell".SchoolDamage(aura.spellSource, aura.causer, owner, damage, school, 1)
+        local result = Global.use"Spell".SchoolDamage(aura.spellSource, aura.causer, owner, damage, school, 1)
 
         if result.finalDamage and result.finalDamage > 0 then
-            aura.causer.charsheet.spellbook:onDealDamage(aura.causer, owner, result.finalDamage, school, aura)
+            aura.causer.spellbook:onDealDamage(aura.causer, owner, result.finalDamage, school, aura)
         end
     end
 end
@@ -119,7 +130,7 @@ end
 Aura.createInstance = function(self)
     local aura = AuraInstance.new()
     aura.aura = self
-    aura.appliedAt = utctime()
+    aura.appliedAt = Global.utctime()
     return aura
 end
 
@@ -130,14 +141,14 @@ end
 local QueryHandler = {
     RemoveThisAura = function(dispelMode)
         return function(self, unit)
-            use"Spell".RemoveAura(unit, self.aura, dispelMode, nil, nil, nil, self.causer)
+            Global.use"Spell".RemoveAura(unit, self.aura, dispelMode, nil, nil, nil, self.causer)
         end
     end
 }
 
 
 local logicalIncrement = 0
-AuraInstance.new = Constructor(AuraInstance, {
+AuraInstance.new = Global.Constructor(AuraInstance, {
     elapsedPart = 0,
     trulyElapsedPart = 0,
     duration = math.huge,
@@ -145,7 +156,7 @@ AuraInstance.new = Constructor(AuraInstance, {
     causer = nil,
     spellSource = nil,
 })
-Aura.new = Constructor(Aura, {
+Aura.new = Global.Constructor(Aura, {
     effectType = AuraDispelType.None, --Default effect type is none.
 }, function(self)
     --Automatically assign id to have a common reference point sides
@@ -309,7 +320,7 @@ Auras.Agony:assign({
     end,
     onTick = function(aura, deltaTime, owner, tickStrength)
         local maxstacks = 12
-        if aura.causer.charsheet.spellbook:hasSpell(Spells.WritheInAgony) then
+        if aura.causer.spellbook:hasSpell(Spells.WritheInAgony) then
             --Writhe in Agony talent
             maxstacks = 18
         end

@@ -1,30 +1,32 @@
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-setfenv(1, require(script.Parent.Global))
+local Const = require(script.Parent.Const)
+local Global = require(script.Parent.Global)
+local Races = Const.Races
+local Classes = Const.Classes
+local Specs = Const.Specs
+local CastType = Const.CastType
+local Schools = Const.Schools
+local Resources = Const.Resources
+local Auras = Const.Auras
+local Spells = Const.Spells
 
-local Spellbook = use"Object".inherit"Spellbook"
-local SpellbookEntry = use"Object".inherit"SpellbookEntry"
+local Spellbook = Global.use"Object".inherit"Spellbook"
 
---A spellbook is a collection of spells.
+--A spellbook is a collection of learned spells and spell states.
 
-Spellbook.new = Constructor(Spellbook, {
+Spellbook.new = Global.Constructor(Spellbook, {
     spells = {},
-})
-
-SpellbookEntry.new = Constructor(SpellbookEntry, {
-    spell = nil,
-
-    charges = 0,
-    rechargeNextAt = 0,
-    readyAt = 0,
-
-})
+}, function(self, charsheet)
+    self:updateRaceSpells(charsheet)
+    self:updateClassSpells(charsheet)
+    self:updateSpecSpells(charsheet)
+end)
 
 Spellbook.learn = function(self, spell)
-    assertObj(spell)
+    Global.assertObj(spell)
     spell:assertIs("Spell")
 
     if not self:hasSpell(spell) then
-        local newSpellbookEntry = SpellbookEntry.new()
+        local newSpellbookEntry = Global.use"SpellbookEntry".new()
         newSpellbookEntry.spell = spell
         newSpellbookEntry.charges = spell.charges
         newSpellbookEntry.recharge = newSpellbookEntry.charges
@@ -35,7 +37,7 @@ Spellbook.learn = function(self, spell)
 end
 
 Spellbook.unlearn = function(self, spell)
-    assertObj(spell)
+    Global.assertObj(spell)
     spell:assertIs("Spell")
 
     for i, spellbookEntry in ipairs(self.spells) do
@@ -96,14 +98,14 @@ Spellbook.updateClassSpells = genericLearnSpellbook(classSpellbooks, "class")
 Spellbook.updateSpecSpells = genericLearnSpellbook(specSpellbooks, "spec")
 
 Spellbook.ready = function(self, spell)
-    assertObj(spell)
+    Global.assertObj(spell)
     spell:assertIs("Spell")
 
     for i, spellbookEntry in ipairs(self.spells) do
         if spellbookEntry.spell.id == spell.id then
             --TODO: locked
             --TODO: silence/impaired
-            local rdy = spellbookEntry.readyAt <= utctime()
+            local rdy = spellbookEntry.readyAt <= Global.utctime()
             if spellbookEntry.spell.charges then
                 rdy = rdy and spellbookEntry.charges > 0
             end
@@ -114,7 +116,7 @@ Spellbook.ready = function(self, spell)
 end
 
 Spellbook.hasSpell = function(self, spell)
-    assertObj(spell)
+    Global.assertObj(spell)
     spell:assertIs("Spell")
     
     for _, entry in ipairs(self.spells) do
@@ -129,9 +131,9 @@ Spellbook.tick = function(self, deltaTime)
     --Handle recharges
     for i, spellbookEntry in ipairs(self.spells) do
         if spellbookEntry.spell.charges then
-            if spellbookEntry.charges < spellbookEntry.spell.charges and spellbookEntry.rechargeNextAt <= utctime() then
+            if spellbookEntry.charges < spellbookEntry.spell.charges and spellbookEntry.rechargeNextAt <= Global.utctime() then
                 spellbookEntry.charges = spellbookEntry.charges + 1
-                spellbookEntry.rechargeNextAt = utctime() + spellbookEntry.spell.recharge
+                spellbookEntry.rechargeNextAt = Global.utctime() + spellbookEntry.spell.recharge
             end
         end
     end
@@ -143,13 +145,13 @@ Spellbook.onCreateUnit = function(self, unit)
     for _, spellbookEntry in ipairs(self.spells) do
         local spell = spellbookEntry.spell
         if spell.castType == CastType.PermanentAura then
-            use"Spell".ApplyAura(spell, unit, spell.permanentAura, unit)
+            Global.use"Spell".ApplyAura(spell, unit, spell.permanentAura, unit)
         end
     end
 end
 
 Spellbook.postCast = function(self, spell, unit)
-    assertObj(spell)
+    Global.assertObj(spell)
     spell:assertIs("Spell")
 
     for i, spellbookEntry in ipairs(self.spells) do
@@ -157,11 +159,11 @@ Spellbook.postCast = function(self, spell, unit)
             if spellbookEntry.spell.charges then
                 if spellbookEntry.spell.charges == spellbookEntry.spell.charges then
                     --If we just got off max charges, init recharge
-                    spellbookEntry.rechargeNextAt = utctime() + spellbookEntry.spell.recharge
+                    spellbookEntry.rechargeNextAt = Global.utctime() + spellbookEntry.spell.recharge
                 end
                 spellbookEntry.charges = spellbookEntry.charges - 1
             end
-            spellbookEntry.readyAt = utctime() + resolveNumFn(spellbookEntry.spell.cooldown, unit.charsheet)
+            spellbookEntry.readyAt = Global.utctime() + Global.resolveNumFn(spellbookEntry.spell.cooldown, unit.charsheet)
             return true
         end
     end
@@ -207,7 +209,7 @@ Spellbook.onEquipmentChange = function(self, unit)
     --Fired when equipment changes.
 
     --All classes: Apply or remove Armor Proficiency
-    if self:hasSpell(Spells.WarlockArmorProfiency) then
+    if self:hasSpell(Spells.WarlockArmorProficiency) then
         --TODO
     end
 end

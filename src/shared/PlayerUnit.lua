@@ -1,10 +1,14 @@
-setfenv(1, require(script.Parent.Global))
+local Global = require(script.Parent.Global)
+local Const = require(script.Parent.Const)
+local Spells = Const.Spells
+local Auras = Const.Auras
+local Resources = Const.Resources
 
-local PlayerUnit = use"ResourceUnit".inherit"PlayerUnit"
+local PlayerUnit = Global.use"ResourceUnit".inherit"PlayerUnit"
 
 --Implements player-specific aspects of a player unit.
 
-PlayerUnit.new = Constructor(PlayerUnit, {
+PlayerUnit.new = Global.Constructor(PlayerUnit, {
     player = nil, --PlayerDesc for this unit
 }, function(self, charsheet, playerdesc)
     self.player = playerdesc
@@ -15,7 +19,7 @@ PlayerUnit.tick = function(self, deltaTime)
     --Class-specific ticks
 
     --Affliction Warlock: Corruption Fel Energy generation
-    if self.charsheet.spellbook:hasSpell(Spells.AfflictionFelEnergy) then
+    if self.spellbook:hasSpell(Spells.AfflictionFelEnergy) then
         local regainedFE = 0
         for _, aura in ipairs(self.castAuras.noproxy) do
             if not aura.invalidate and aura.aura.id == Auras.Corruption.id then

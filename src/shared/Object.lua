@@ -1,4 +1,5 @@
-setfenv(1, require(script.Parent.Global))
+local Const = require(script.Parent.Const)
+local Global = require(script.Parent.Global)
 
 local Object = {}
 
@@ -13,7 +14,7 @@ setmetatable(Object, {
 
 Object.super = Object
 Object.type = "Object"
-__RegisterType(Object.type, Object)
+Global.__RegisterType(Object.type, Object)
 
 -- Static getters
 
@@ -29,7 +30,7 @@ Object.inherit = function(newname, superclass)
     generatedClass.type = newname
     generatedClass.super = superclass or Object
     generatedClass.inherit = xinherit(generatedClass)
-    __RegisterType(newname, generatedClass)
+    Global.__RegisterType(newname, generatedClass)
     return setmetatable(generatedClass, {__index = generatedClass.super})
 end
 
@@ -39,23 +40,23 @@ end
 
 -- Constructors
 
-Object.new = AbstractClassConstructor
+Object.new = Global.AbstractClassConstructor
 
 -- Functions
 
-if roblox then
+if Global.roblox then
     local downstreamRemote = Instance.new("RemoteFunction")
     Object.downstream = function(self) --This is called on clients and requests the server to update this object.
-        local strobj = downstreamRemote.InvokeServer(Remote, Request.Downstream, UniqueRequestId(), self.ref)
+        local strobj = downstreamRemote.InvokeServer(Global.Remote, Const.Request.Downstream, Global.UniqueRequestId(), self.ref)
 
         self:Deserialize(strobj)
 
         return nil --Does not return the new object, only updates the given reference
     end
-    if isServer then
-        Retrieve.OnServerInvoke = function(player, request, requestId, dsRef) --This handles downstream requests
-            if request ~= Request.Downstream then return end
-            local obj = __FindByReference(dsRef)
+    if Global.isServer then
+        Global.Retrieve.OnServerInvoke = function(player, request, requestId, dsRef) --This handles downstream requests
+            if request ~= Const.Request.Downstream then return end
+            local obj = Global.__FindByReference(dsRef)
             local objInfo = obj:RemoteSerialize()
             return objInfo --Give the object info back to the client
         end
@@ -99,12 +100,12 @@ Object.tick = function(self, deltaTime)
 end
 
 Object.GetType = function(self)
-    assertObj(self)
+    Global.assertObj(self)
     return self.type
 end
 
 Object.is = function(self, ofType)
-    assertObj(self)
+    Global.assertObj(self)
     repeat
         if self:GetType() == ofType then
             return true
@@ -115,13 +116,13 @@ Object.is = function(self, ofType)
 end
 
 Object.assertIs = function(self, strType)
-    assertObj(self)
+    Global.assertObj(self)
     assert(self:is(strType), "expected " .. strType .. ", got " .. self.type)
 end
 
 Object.Equals = Object.ReferenceEquals
 
-Object.Finalize = void
+Object.Finalize = Global.void
 
 Object.assign = function(self, tbl)
     for k, v in pairs(tbl) do

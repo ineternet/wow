@@ -1,7 +1,7 @@
+local Const = require(script.Parent.Const)
 local Global = {}
 
 local typeIndex = {}
-local const = require(script.Parent.Const)
 
 local isServer = game:GetService("RunService"):IsServer()
 if _VERSION ~= "Luau" then
@@ -104,7 +104,7 @@ local function handleHeartbeat(dt)
     end
 
     if count > 0 then
-        Global.Remote:FireAllClients(Request.FullObjectDelta, Global.compress(toUpdateObjects))
+        Global.Remote:FireAllClients(Const.Request.FullObjectDelta, Global.compress(toUpdateObjects))
         toUpdateObjects = {}
     end
 end
@@ -301,7 +301,7 @@ end
 --Argument 2: The object value to insert
 Global.replicatedInsert = function(tbl, val)
     Global.assertObj(val)
-    tbl[#tbl.noproxy + 1] = ref(val)
+    tbl[#tbl.noproxy + 1] = Global.ref(val)
 end
 
 Global.replicatedFindIndex = function(tbl, obj)
@@ -440,8 +440,8 @@ else --For bindings only
             local plr = nil
             return Global.Retrieve.OnServerInvoke(plr, ...)
         end,
-        OnServerInvoke = void,
-        OnClientInvoke = void,
+        OnServerInvoke = Global.void,
+        OnClientInvoke = Global.void,
     }
 end
 
@@ -463,7 +463,7 @@ end
 
 Global.ref = function(obj)
     assert(obj and type(obj) == "table" and obj.ref, "expected (Object), got " .. type(obj) .. " (missing 'ref')")
-    if not pcall(function() assertObj(obj) end) then
+    if not pcall(function() Global.assertObj(obj) end) then
         warn("Attempted to create reference to non-object. ref: " .. tostring(obj.ref))
     end
 
@@ -492,7 +492,7 @@ Global.RestoreMt = function(obj)
 
     --Set metatable to the object's type
     setmetatable(obj, {
-        __index = use(obj.type)
+        __index = Global.use(obj.type)
     })
 
     --Restore ref MTs for first-level references
@@ -524,16 +524,21 @@ Global.resolveNumFn = function(x, ...)
     end
 end
 
-local fenv = getfenv(1)
-for k, v in pairs(Global) do
-    fenv[k] = v
-end
-for k, v in pairs(const) do
-    fenv[k] = v
-end
-
-if _VERSION ~= "Luau" then --Lua 5.1 support
-    fenv.math.round = function(x)
+if _VERSION == "Luau" then
+    Global.utctime = function()
+        return tick() + timeShift
+    end
+    Global.jsonEncode = function(t)
+        return game:GetService("HttpService"):JSONEncode(t)
+    end
+    Global.jsonDecode = function(t)
+        return game:GetService("HttpService"):JSONDecode(t)
+    end
+    Global.roblox = true
+    Global.wait = task.wait
+    Global.delay = task.delay
+else --Lua 5.1 support
+    math.round = function(x)
         if x > 0 then
             return math.floor(x + 0.5)
         elseif x < 0 then
@@ -541,7 +546,7 @@ if _VERSION ~= "Luau" then --Lua 5.1 support
         end
         return 0
     end
-    fenv.math.clamp = function(x, min, max)
+    math.clamp = function(x, min, max)
         if x < min then
             return min
         elseif x > max then
@@ -549,40 +554,27 @@ if _VERSION ~= "Luau" then --Lua 5.1 support
         end
         return x
     end
-    fenv.utctime = function()
+    Global.utctime = function()
         return os.time() + timeShift
     end
-    fenv.jsonEncode = function(t)
+    Global.jsonEncode = function(t)
         error("JSON encoding not supported")
     end
-    fenv.jsonDecode = function(t)
+    Global.jsonDecode = function(t)
         error("JSON decoding not supported")
     end
-    fenv.roblox = false
-    fenv.table.find = function(t, obj)
+    Global.roblox = false
+    table.find = function(t, obj)
         for i, v in pairs(t) do
             if v == obj then
                 return i
             end
         end
     end
-    fenv.wait = wait
-    fenv.delay = delay
-else --if Luau
-    fenv.utctime = function()
-        return tick() + timeShift
-    end
-    fenv.jsonEncode = function(t)
-        return game:GetService("HttpService"):JSONEncode(t)
-    end
-    fenv.jsonDecode = function(t)
-        return game:GetService("HttpService"):JSONDecode(t)
-    end
-    fenv.roblox = true
-    fenv.wait = task.wait
-    fenv.delay = task.delay
+    Global.wait = wait
+    Global.delay = delay::any
 end
 
-fenv.isServer = isServer
+Global.isServer = isServer
 
-return fenv
+return Global

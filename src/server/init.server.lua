@@ -20,11 +20,12 @@ char:updateClassResources()
 char.primaryResourceAmount = char.primaryResourceMaximum
 char.secondaryResourceAmount = char.secondaryResourceMaximum
 
-char.charsheet.spellbook:learn(const.Spells.HotStreak)
-char.charsheet.spellbook:learn(const.Spells.StartAttack)
-char.charsheet.spellbook:learn(const.Spells.Pyroblast)
-char.charsheet.spellbook:learn(const.Spells.FireBlast)
-char.charsheet.spellbook:learn(const.Spells.ArcaneIntellect)
+char.spellbook:learn(const.Spells.HotStreak)
+char.spellbook:learn(const.Spells.StartAttack)
+char.spellbook:learn(const.Spells.Pyroblast)
+char.spellbook:learn(const.Spells.FireBlast)
+char.spellbook:learn(const.Spells.Fireball)
+char.spellbook:learn(const.Spells.ArcaneIntellect)
 
 local stamdagger = items.newOf(const.Items.StamDagger)
 
@@ -60,7 +61,7 @@ game:GetService("Players").PlayerAdded:Connect(function(p)
     --game:GetService("ReplicatedStorage"):WaitForChild("Replicate"):FireClient(p, char)
     print("Before pass:", char)
     env.Remote:FireClient(p, "passchar", char.noproxy)
-    wait(1)
+    task.wait(1)
     --print("Dealing damage now")
     --char:takeDamage(20, env.Schools.Physical)
     --print("Hp after:", enemy.primaryResourceAmount)
@@ -72,8 +73,8 @@ game:GetService("Players").PlayerAdded:Connect(function(p)
 end)
 
 env.Remote.OnServerEvent:Connect(function(plr, action, arg)
-    if action == env.Request.CastSpell then
-        local spell = env.Spells[arg]
+    if action == const.Request.CastSpell then
+        local spell = const.Spells[arg]
         print("Attempting to cast spell " .. spell.name)
         local suc, msg = char:wantToCast(spell)
         if not suc then
@@ -83,9 +84,9 @@ env.Remote.OnServerEvent:Connect(function(plr, action, arg)
 end)
 
 game:GetService("RunService").Heartbeat:Connect(function(deltaTime)
-    if char and workspace:FindFirstChild("emojipasta") then
-        char.location = workspace.emojipasta.HumanoidRootPart.Position
-        char.orientation = workspace.emojipasta.HumanoidRootPart.Orientation.Y
+    if char and workspace:FindFirstChild("qjza") then
+        char.location = workspace.qjza.HumanoidRootPart.Position
+        char.orientation = workspace.qjza.HumanoidRootPart.Orientation.Y
     end
     if enemy and workspace:FindFirstChild("Dummy") then
         enemy.location = workspace.Dummy.Torso.Position

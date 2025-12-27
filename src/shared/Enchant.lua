@@ -1,15 +1,17 @@
-setfenv(1, require(script.Parent.Global))
+local Global = require(script.Parent.Global)
+local Const = require(script.Parent.Const)
+local Enchants = Const.Enchants
 
-local Enchant = use"Object".inherit"Enchant"
+local Enchant = Global.use"Object".inherit"Enchant"
 
 local logicalIncrement = 0
-Enchant.new = Constructor(Enchant, {
+Enchant.new = Global.Constructor(Enchant, {
     icon = "rbxassetid://1337",
 
     --mod = {},
     --flat = {},
 
-    slot = Slots.None
+    slot = Const.Slots.None
 }, function(self)
     --Automatically assign id to have a common reference point sides
     logicalIncrement = logicalIncrement + 1
@@ -19,16 +21,16 @@ end)
 Enchant.applyToItem = function(self, item)
     --Check if the enchant can be applied to the item
     local idef = item.item
-    if self.slot == Slots.None then
+    if self.slot == Const.Slots.None then
         return false, "Enchant does not go on equipped items"
     elseif not idef.equipSlot then
         return false, "Item is not equipable"
-    elseif self.slot == Slots.Any then
+    elseif self.slot == Const.Slots.Any then
         --Pass (enchant can be applied to any slot)
 
     elseif
-        (self.slot == Slots.TwoHandWeapon and
-            idef.equipSlot == Slots.MainHand and idef.takeBothHands == true)
+        (self.slot == Const.Slots.TwoHandWeapon and
+            idef.equipSlot == Const.Slots.MainHand and idef.takeBothHands == true)
     then
         --Pass (special cases)
 
@@ -51,7 +53,7 @@ Enchants.MinorStamina:assign({
     flat = {
         stamina = 5
     },
-    slot = Slots.MainHand
+    slot = Const.Slots.MainHand
 })
 
 return Enchant

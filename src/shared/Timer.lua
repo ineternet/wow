@@ -1,6 +1,6 @@
-setfenv(1, require(script.Parent.Global))
+local Global = require(script.Parent.Global)
 
-local Timer = use"Object".inherit"Timer"
+local Timer = Global.use"Object".inherit"Timer"
 
 -- Constants
 
@@ -16,7 +16,7 @@ local Timer = use"Object".inherit"Timer"
 
 -- Constructors
 
-Timer.new = Constructor(Timer, {
+Timer.new = Global.Constructor(Timer, {
     time = 0,
     rate = 1
 })
@@ -29,7 +29,7 @@ function Timer:SetRate(x)
     self.rate = x
 end
 
-Timer.Equals = ValueEquals
+Timer.Equals = Global.ValueEquals
 
 
 

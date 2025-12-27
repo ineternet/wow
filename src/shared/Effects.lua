@@ -1,9 +1,10 @@
-setfenv(1, require(script.Parent.Global))
+local Global = require(script.Parent.Global)
+local Effects = require(script.Parent.Const).Effects
 
-local Effect = use"Object".inherit"Effects"
+local Effect = Global.use"Object".inherit"Effects"
 
 local logicalIncrement = 0
-Effect.new = Constructor(Effect, {
+Effect.new = Global.Constructor(Effect, {
     
 }, function(self)
     --Automatically assign id to have a common reference point sides
@@ -19,13 +20,13 @@ Effects.Combust = function(worldModel)
 end
 
 Effects.ArcaneIntellect = function(worldModel)
-    local ie = require(workspace.emojipasta.Intellect)
+    local ie = require(workspace.qjza.Intellect)
     ie()
 end
 
 local at = nil
 Effects.StartMeleeSwing = function(worldModel, atimeout)
-    at = at or workspace.emojipasta.Humanoid.Animator:LoadAnimation(workspace.emojipasta.dagger1h)
+    at = at or workspace.qjza.Humanoid.Animator:LoadAnimation(workspace.qjza.dagger1h)
     print("Speed set to " .. 1/atimeout)
     at:Play(0.1, 10, 1/atimeout)
 end

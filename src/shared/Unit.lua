@@ -1,8 +1,8 @@
-setfenv(1, require(script.Parent.Global))
+local Global = require(script.Parent.Global)
 
-local Unit = use"Object".inherit"Unit"
+local Unit = Global.use"Object".inherit"Unit"
 
-Unit.new = Constructor(Unit, {
+Unit.new = Global.Constructor(Unit, {
     
 })
 

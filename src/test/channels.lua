@@ -65,7 +65,7 @@ print("Stamina:", tu.charsheet:stamina(tu))
 local hastering = items.newOf(const.Items.HasteRing)
 local _ = tu.charsheet.equipment:swap(const.Slots.Ring1, hastering)
 
-tu.charsheet.spellbook:learn(const.Spells.Bloodlust)
+tu.spellbook:learn(const.Spells.Bloodlust)
 
 --env.use"Spell".ApplyAura(nil, enemy, const.Auras.ArcaneIntellect, nil, { duration = 60*60 })
 --env.use"Spell".ApplyAura(const.Spells.Corruption, enemy, const.Auras.Corruption, tu, { duration = 60*60 })

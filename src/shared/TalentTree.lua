@@ -1,6 +1,12 @@
-setfenv(1, require(script.Parent.Global))
+local Global = require(script.Parent.Global)
+local Const = require(script.Parent.Const)
+local Spells = Const.Spells
+local TalentTier = Const.TalentTier
+local TalentChoice = Const.TalentChoice
+local Classes = Const.Classes
+local Specs = Const.Specs
 
-local TalentTree = use"Object".inherit"TalentTree"
+local TalentTree = Global.use"Object".inherit"TalentTree"
 
 --Represents the talents a player has selected.
 
@@ -122,7 +128,7 @@ TalentTree.SpecTalentTrees = {
     }
 }
 
-TalentTree.new = Constructor(TalentTree, {
+TalentTree.new = Global.Constructor(TalentTree, {
     [TalentTier.Level10] = TalentChoice.Unassigned,
     [TalentTier.Level15] = TalentChoice.Unassigned,
     [TalentTier.Level25] = TalentChoice.Unassigned,

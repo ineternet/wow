@@ -1,6 +1,24 @@
-setfenv(1, require(script.Parent.Global))
+local Global = require(script.Parent.Global)
+local Const = require(script.Parent.Const)
+local TargetUnit = require(script.Parent.TargetUnit)
+local Schools = Const.Schools
+local GCD = Const.GCD
+local TargetType = Const.TargetType
+local Range = Const.Range
+local AuraOverrideBehavior = Const.AuraOverrideBehavior
+local DispelMode = Const.DispelMode
+local AuraDispelType = Const.AuraDispelType
+local AuraRemovalMode = Const.AuraRemovalMode
+local AuraType = Const.AuraType
+local Resources = Const.Resources
+local Projectiles = Const.Projectiles
+local Specs = Const.Specs
+local CastType = Const.CastType
+local Effects = Const.Effects
+local Spells = Const.Spells
+local Auras = Const.Auras
 
-local Spell = use"Object".inherit"Spell"
+local Spell = Global.use"Object".inherit"Spell"
 
 local Linebreak = "\n\n"
 
@@ -64,10 +82,10 @@ local function schoolDamage(args)
         local result = Spell.SchoolDamage(spell, castingUnit, spellTarget, damage, school, args.pvp, args.forceCrit)
     
         if result.crit then
-            castingUnit.charsheet.spellbook:onSpellCritical(castingUnit, spell, spellTarget, _)
+            castingUnit.spellbook:onSpellCritical(castingUnit, spell, spellTarget, _)
         end
         if result.finalDamage and result.finalDamage > 0 then
-            castingUnit.charsheet.spellbook:onDealDamage(castingUnit, spellTarget, result.finalDamage, school, spell)
+            castingUnit.spellbook:onDealDamage(castingUnit, spellTarget, result.finalDamage, school, spell)
         end
     end
 end
@@ -78,10 +96,10 @@ local function schoolHeal(args)
         local school = args.school
         local result = Spell.SchoolHeal(spell, castingUnit, spellTarget, damage, school, args.pvp, args.forceCrit)
         --[[if result.crit then
-            castingUnit.charsheet.spellbook:onSpellCritical(castingUnit, spell, spellTarget, _)
+            castingUnit.spellbook:onSpellCritical(castingUnit, spell, spellTarget, _)
         end
         if result.finalDamage and result.finalDamage > 0 then
-            castingUnit.charsheet.spellbook:onDealHealing(castingUnit, spellTarget, result.finalDamage, school, spell)
+            castingUnit.spellbook:onDealHealing(castingUnit, spellTarget, result.finalDamage, school, spell)
         end]]
     end
 end
@@ -161,25 +179,25 @@ Spell.ApplyAura = function(spell, toUnit, aura, causer, auraData)
     end
 
     for _, auraInstance in pairs({
-        overrides.doNotCreateNewAura and nil or auraInstance,
-        overrides.updateOldAura and overrides.oldAura or nil,
+        if overrides.doNotCreateNewAura then nil else auraInstance,
+        if overrides.updateOldAura then overrides.oldAura else nil,
     }) do
         for k, v in pairs(auraData or {}) do
             if overrides[k] then
                 auraInstance[k] = overrides[k]
             else
-                auraInstance[k] = resolveNumFn(v, causer.charsheet)
+                auraInstance[k] = Global.resolveNumFn(v, causer, causer.charsheet)
             end
         end
         if causer then
-            auraInstance.causer = ref(causer)
+            auraInstance.causer = Global.ref(causer)
         end
     end
 
     if auraInstance then
-        replicatedInsert(toUnit.auras, auraInstance)
+        Global.replicatedInsert(toUnit.auras, auraInstance)
         if causer then
-            replicatedInsert(causer.castAuras, auraInstance)
+            Global.replicatedInsert(causer.castAuras, auraInstance)
         end
         return auraInstance
     end
@@ -220,7 +238,7 @@ Spell.RemoveAura = function(fromUnit, auraOrArg, dispelMode, specificAmount, rem
         then
             if dispelMode ~= DispelMode.Latest then
                 if auraInstance.causer then
-                    replicatedRemove(auraInstance.causer.castAuras, auraInstance)
+                    Global.replicatedRemove(auraInstance.causer.castAuras, auraInstance)
                 end
                 markedForRemoval[i] = true
             else
@@ -242,7 +260,7 @@ Spell.RemoveAura = function(fromUnit, auraOrArg, dispelMode, specificAmount, rem
     end
     if latestAura then
         if latestAura.causer then
-            replicatedRemove(latestAura.causer.castAuras, latestAura)
+            Global.replicatedRemove(latestAura.causer.castAuras, latestAura)
         end
         markedForRemoval[latestAura] = true
     end
@@ -254,16 +272,16 @@ Spell.RemoveAura = function(fromUnit, auraOrArg, dispelMode, specificAmount, rem
             removedAurasForReturn[#removedAurasForReturn + 1] = auraInstance
         end
     end
-    replicatedUnindex(fromUnit.auras, markedForRemoval) --TODO: May need to finalize each aura to clear connections
+    Global.replicatedUnindex(fromUnit.auras, markedForRemoval) --TODO: May need to finalize each aura to clear connections
 
     return removedAurasForReturn
 end
 
 Spell.RemoveAuraInstance = function(fromUnit, auraInst)
     if auraInst.causer then
-        replicatedRemove(auraInst.causer.castAuras, auraInst)
+        Global.replicatedRemove(auraInst.causer.castAuras, auraInst)
     end
-    replicatedRemove(fromUnit.auras, auraInst)
+    Global.replicatedRemove(fromUnit.auras, auraInst)
 end
 
 local function removeAura(args)
@@ -277,7 +295,7 @@ local function spellSteal(args)
         --We assume spell steals will only ever steal beneficial effects
         local removedAuras = Spell.RemoveAura(spellTarget, args.dispelType, args.dispelMode, args.amount, AuraRemovalMode.ByDispelType, AuraType.Buff)
         for _, auraInstance in ipairs(removedAuras) do
-            replicatedInsert(castingUnit.auras, auraInstance)
+            Global.replicatedInsert(castingUnit.auras, auraInstance)
         end
     end
 end
@@ -295,14 +313,14 @@ local function projectile(args)
         local spd = args.arriveWithin * fromMaxRangeRatio
         --fb.AlignOrientation
         fb.Velocity = (goal - start) / spd
-        wait(spd)
+        Global.wait(spd)
         local fn = args.onArriveWorldModel
         if type(fn) == "function" then
             fn(workspace.Dummy)
         end
         fb.Anchored = true
         fb.Transparency = 1
-        delay(2, function()
+        Global.delay(2, function()
             fb:Destroy()
         end)
     end
@@ -354,7 +372,7 @@ local function ifKnowsSpell(preSpell)
             local effect = args.effect or args[1]
             local compoundReturn = false
 
-            if castingUnit.charsheet.spellbook:hasSpell(preSpell) then
+            if castingUnit.spellbook:hasSpell(preSpell) then
                 compoundReturn = args.dropFollowingEffects
                 compoundReturn = effect(spell, castingUnit, spellTarget, spellLocation) or compoundReturn
             end
@@ -399,7 +417,7 @@ end
 
 local collectors = {
     SamePartyElseTargetOnly = function(_, castingUnit, spellTarget, _)
-        assertObj(spellTarget)
+        Global.assertObj(spellTarget)
         if not castingUnit or not spellTarget:is"PlayerUnit" or not castingUnit.is or not castingUnit:is"PlayerUnit" then
             --Automatically fail if target is not a player or if caster is not a player (can not be in parties)
             --Continue to end of function
@@ -423,7 +441,7 @@ local collectors = {
 }
 
 local logicalIncrement = 0
-Spell.new = Constructor(Spell, {
+Spell.new = Global.Constructor(Spell, {
     icon = "rbxassetid://1337",
 
     cooldown = 0,
@@ -434,6 +452,8 @@ Spell.new = Constructor(Spell, {
     range = Range.Unlimited,
 
     school = Schools.Physical,
+
+    effects = {},
 }, function(self)
     --Automatically assign id to have a common reference point sides
     logicalIncrement = logicalIncrement + 1
@@ -757,8 +777,10 @@ Spells.MortalStrike:assign({
         },
         applyAura {
             aura = Auras.MortalWounds,
-            amount = 0.5,
-            duration = 6,
+            auraData = {
+                amount = 0.5,
+                duration = 6,
+            }
         },
     },
 })
@@ -1078,9 +1100,9 @@ local generalArmorProf = {
 }
 
 do --Armor proficiency fold
-    Spells.WarriorArmorProfiency = Spell.new()
-    Spells.WarriorArmorProfiency:assign(generalArmorProf)
-    Spells.WarriorArmorProfiency:assign({
+    Spells.WarriorArmorProficiency = Spell.new()
+    Spells.WarriorArmorProficiency:assign(generalArmorProf)
+    Spells.WarriorArmorProficiency:assign({
         tooltip = function(sheet)
             local str = "Warriors can wear cloth, leather and plate armor."
             str = str .. Linebreak .. "Starting at level 24, gain %s%% increased primary stats for wearing full plate armor."
@@ -1091,9 +1113,9 @@ do --Armor proficiency fold
         },
     })
 
-    Spells.MageArmorProfiency = Spell.new()
-    Spells.MageArmorProfiency:assign(generalArmorProf)
-    Spells.MageArmorProfiency:assign({
+    Spells.MageArmorProficiency = Spell.new()
+    Spells.MageArmorProficiency:assign(generalArmorProf)
+    Spells.MageArmorProficiency:assign({
         tooltip = function(sheet)
             local str = "Mages can wear cloth armor."
             str = str .. Linebreak .. "Starting at level 24, gain %s%% increased primary stats for wearing full cloth armor."
@@ -1104,9 +1126,9 @@ do --Armor proficiency fold
         },
     })
 
-    Spells.HunterArmorProfiency = Spell.new()
-    Spells.HunterArmorProfiency:assign(generalArmorProf)
-    Spells.HunterArmorProfiency:assign({
+    Spells.HunterArmorProficiency = Spell.new()
+    Spells.HunterArmorProficiency:assign(generalArmorProf)
+    Spells.HunterArmorProficiency:assign({
         tooltip = function(sheet)
             local str = "Hunters can wear cloth and leather armor."
             str = str .. Linebreak .. "Starting at level 24, gain %s%% increased primary stats for wearing full leather armor."
@@ -1117,9 +1139,9 @@ do --Armor proficiency fold
         },
     })
 
-    Spells.PaladinArmorProfiency = Spell.new()
-    Spells.PaladinArmorProfiency:assign(generalArmorProf)
-    Spells.PaladinArmorProfiency:assign({
+    Spells.PaladinArmorProficiency = Spell.new()
+    Spells.PaladinArmorProficiency:assign(generalArmorProf)
+    Spells.PaladinArmorProficiency:assign({
         tooltip = function(sheet)
             local str = "Paladins can wear cloth, leather and plate armor."
             str = str .. Linebreak .. "Starting at level 24, gain %s%% increased primary stats for wearing full plate armor."
@@ -1130,9 +1152,9 @@ do --Armor proficiency fold
         },
     })
 
-    Spells.PriestArmorProfiency = Spell.new()
-    Spells.PriestArmorProfiency:assign(generalArmorProf)
-    Spells.PriestArmorProfiency:assign({
+    Spells.PriestArmorProficiency = Spell.new()
+    Spells.PriestArmorProficiency:assign(generalArmorProf)
+    Spells.PriestArmorProficiency:assign({
         tooltip = function(sheet)
             local str = "Priests can wear cloth armor."
             str = str .. Linebreak .. "Starting at level 24, gain %s%% increased primary stats for wearing full cloth armor."
@@ -1143,9 +1165,9 @@ do --Armor proficiency fold
         },
     })
 
-    Spells.RogueArmorProfiency = Spell.new()
-    Spells.RogueArmorProfiency:assign(generalArmorProf)
-    Spells.RogueArmorProfiency:assign({
+    Spells.RogueArmorProficiency = Spell.new()
+    Spells.RogueArmorProficiency:assign(generalArmorProf)
+    Spells.RogueArmorProficiency:assign({
         tooltip = function(sheet)
             local str = "Rogues can wear cloth and leather armor."
             str = str .. Linebreak .. "Starting at level 24, gain %s%% increased primary stats for wearing full leather armor."
@@ -1156,9 +1178,9 @@ do --Armor proficiency fold
         },
     })
 
-    Spells.DruidArmorProfiency = Spell.new()
-    Spells.DruidArmorProfiency:assign(generalArmorProf)
-    Spells.DruidArmorProfiency:assign({
+    Spells.DruidArmorProficiency = Spell.new()
+    Spells.DruidArmorProficiency:assign(generalArmorProf)
+    Spells.DruidArmorProficiency:assign({
         tooltip = function(sheet)
             local str = "Druids can wear cloth and leather armor."
             str = str .. Linebreak .. "Starting at level 24, gain %s%% increased primary stats for wearing full leather armor."
@@ -1169,9 +1191,9 @@ do --Armor proficiency fold
         },
     })
 
-    Spells.WarlockArmorProfiency = Spell.new()
-    Spells.WarlockArmorProfiency:assign(generalArmorProf)
-    Spells.WarlockArmorProfiency:assign({
+    Spells.WarlockArmorProficiency = Spell.new()
+    Spells.WarlockArmorProficiency:assign(generalArmorProf)
+    Spells.WarlockArmorProficiency:assign({
         tooltip = function(sheet)
             local str = "Warlocks can wear cloth armor."
             str = str .. Linebreak .. "Starting at level 24, gain %s%% increased primary stats for wearing full cloth armor."
@@ -1231,10 +1253,13 @@ Spells.StartAttack = Spell.new()
 Spells.StartAttack:assign({
     name = "Attack",
     tooltip = function(sheet)
-        if sheet.equipment:has(Slots.MainHand) and sheet.equipment:has(Slots.OffHand) and sheet:canDualWield() then
+        if sheet.equipment:has(Const.Slots.MainHand) and sheet.equipment:has(Const.Slots.OffHand) and sheet:canDualWield() then
             return "Start attacking your target with both weapons."
+        elseif sheet.equipment:has(Const.Slots.MainHand) then
+            return "Start attacking your target with your main hand weapon."
+        else
+            return "Start attacking your target with unarmed strikes."
         end
-        return "Start attacking your target with your main hand weapon."
     end,
 
     targetType = TargetType.Enemy,

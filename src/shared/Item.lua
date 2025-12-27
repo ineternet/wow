@@ -1,10 +1,10 @@
-setfenv(1, require(script.Parent.Global))
+local Global = require(script.Parent.Global)
 
-local Item = use"Object".inherit"Item"
+local Item = Global.use"Object".inherit"Item"
 
 --Singular item
 
-Item.new = Constructor(Item, {
+Item.new = Global.Constructor(Item, {
     item = nil,
 
     durability = 0,

@@ -1,7 +1,16 @@
-local ContextActionService = game:GetService("ContextActionService")
-setfenv(1, require(script.Parent.Global))
+local Global = require(script.Parent.Global)
+local Const = require(script.Parent.Const)
+local Slots = Const.Slots
+local Classes = Const.Classes
+local Specs = Const.Specs
+local Resources = Const.Resources
+local Actions = Const.Actions
+local Spells = Const.Spells
+local GCD = Const.GCD
+local ResourceNames = Const.ResourceNames
+local Effects = Const.Effects
 
-local ResourceUnit = use"TargetUnit".inherit"ResourceUnit"
+local ResourceUnit = Global.use"TargetUnit".inherit"ResourceUnit"
 
 ResourceUnit.SoulFragmentsRegenerateTo = 3 --How many soul fragments should be the out of combat default
 ResourceUnit.SoulFragmentsRegenTimeout = 4 --How many seconds between each soul fragment regen
@@ -70,7 +79,7 @@ ResourceUnit.manaAt = function(sheet)
     }, sheet.class) then
         mod = 5
     end
-    return mod * BaseMana[sheet.level]
+    return mod * Const.BaseMana[sheet.level]
 end
 
 ResourceUnit.inferMaximum = function(self, forResource, fromSheet)
@@ -95,7 +104,7 @@ end
 
 --Unit class that enables resources and casting.
 
-ResourceUnit.new = Constructor(ResourceUnit, {
+ResourceUnit.new = Global.Constructor(ResourceUnit, {
     primaryResource = Resources.Health,     --Usually health
     secondaryResource = Resources.None,     --Usually mana or mana replacement
     tertiaryResource = Resources.None,      --Usually spec resource for mana users
@@ -115,9 +124,9 @@ ResourceUnit.new = Constructor(ResourceUnit, {
     quinaryResourceMaximum = 0,
 
     currentAction = Actions.Idle,
-    actionBegin = utctime(),
-    actionEnd = utctime(),
-    gcdEnd = utctime(),
+    actionBegin = Global.utctime(),
+    actionEnd = Global.utctime(),
+    gcdEnd = Global.utctime(),
     interruptCast = nil,
 
     mainSwingPassed = 0,
@@ -125,12 +134,12 @@ ResourceUnit.new = Constructor(ResourceUnit, {
     offSwingPassed = 0,
     offSwinging = false,
 
-    lastAggressiveAction = utctime(),
+    lastAggressiveAction = Global.utctime(),
 
-    soulFragmentRegenTick = utctime(),
+    soulFragmentRegenTick = Global.utctime(),
 
 }, function(self, charsheet)
-    table.insert(self.eventConnections, ConnectToHeartbeat(function(dt)
+    table.insert(self.eventConnections, Global.ConnectToHeartbeat(function(dt)
         self:tick(dt)
     end))
 end)
@@ -143,15 +152,15 @@ ResourceUnit.startMainHandSwing = function(self, after)
         self.interruptCast()
     end
     self.currentAction = Actions.Swing
-    self.actionBegin = utctime()
-    self.actionEnd = utctime() --TODO: verify interactions
+    self.actionBegin = Global.utctime()
+    self.actionEnd = Global.utctime() --TODO: verify interactions
     local contfn = function()
         self.mainSwinging = true
     end
     if after <= 0 then --Im not sure if task.delay(0) immediately executes
         contfn()
     else
-        delay(after, contfn)
+        Global.delay(after, contfn)
     end
 end
 
@@ -163,15 +172,15 @@ ResourceUnit.startOffHandSwing = function(self, after)
         self.interruptCast()
     end
     self.currentAction = Actions.Swing
-    self.actionBegin = utctime()
-    self.actionEnd = utctime() --TODO: verify interactions
+    self.actionBegin = Global.utctime()
+    self.actionEnd = Global.utctime() --TODO: verify interactions
     local contfn = function()
         self.offSwinging = true
     end
     if after <= 0 then --Im not sure if task.delay(0) immediately executes
         contfn()
     else
-        delay(after, contfn)
+        Global.delay(after, contfn)
     end
 end
 
@@ -216,7 +225,7 @@ ResourceUnit.setResourceAmount = function(self, resourceType, amount)
     assert(amount >= 0, "Resource amount must be non-negative.")
     assert(Resources[resourceType], "Resource type must be a valid resource.")
 
-    if IntegerResources[resourceType] and math.floor(amount) ~= amount then
+    if Const.IntegerResources[resourceType] and math.floor(amount) ~= amount then
         warn("Tried to create non-integer value for resource " .. resourceType .. ", will be rounded. Original value:", amount)
         amount = math.floor(amount)
     end
@@ -290,22 +299,22 @@ ResourceUnit.hardCast = function(self, spell, spellTarget, spellLocation) --For 
         return false
     end
     self.currentAction = Actions.Cast
-    self.actionBegin = utctime()
-    self.actionEnd = utctime() + (spell.castTime or 0)
-    self.gcdEnd = utctime() + self.charsheet:gcd(self, spell.gcd or GCD.None)
-    self.lastSpell = ref(spell)
+    self.actionBegin = Global.utctime()
+    self.actionEnd = Global.utctime() + (spell.castTime or 0)
+    self.gcdEnd = Global.utctime() + self.charsheet:gcd(self, spell.gcd or GCD.None)
+    self.lastSpell = Global.ref(spell)
 
     local interrupted = false
     self.interruptCast = function()
         self.currentAction = (self.mainSwinging or self.offSwinging) and Actions.Swing or Actions.Idle
         interrupted = true
     end
-    local castDuration = self.actionEnd - utctime()
+    local castDuration = self.actionEnd - Global.utctime()
     castDuration = castDuration / (1 + self.charsheet:haste(self))
-    delay(castDuration, function()
+    Global.delay(castDuration, function()
         if not interrupted then
             if spell.resourceCost then
-                self:deltaResourceAmount(spell.resource, -self:resolveRaw(spell.resource, resolveNumFn(spell.resourceCost, self.charsheet)))
+                self:deltaResourceAmount(spell.resource, -self:resolveRaw(spell.resource, Global.resolveNumFn(spell.resourceCost, self.charsheet)))
             end
             self.currentAction = (self.mainSwinging or self.offSwinging) and Actions.Swing or Actions.Idle
             for order, effect in ipairs(spell.effects) do
@@ -320,10 +329,10 @@ end
 
 ResourceUnit.channelCast = function(self, spell, spellTarget, spellLocation) --For channels
     self.currentAction = Actions.Channel
-    self.actionBegin = utctime()
-    self.actionEnd = utctime() + (spell.channelDuration or 0)
-    self.gcdEnd = utctime() + self.charsheet:gcd(self, spell.gcd or GCD.None)
-    self.lastSpell = ref(spell)
+    self.actionBegin = Global.utctime()
+    self.actionEnd = Global.utctime() + (spell.channelDuration or 0)
+    self.gcdEnd = Global.utctime() + self.charsheet:gcd(self, spell.gcd or GCD.None)
+    self.lastSpell = Global.ref(spell)
 
     local interrupted = false
     self.interruptCast = function()
@@ -331,9 +340,9 @@ ResourceUnit.channelCast = function(self, spell, spellTarget, spellLocation) --F
         interrupted = true
     end
     if spell.resourceCost then
-        self:deltaResourceAmount(spell.resource, -self:resolveRaw(spell.resource, resolveNumFn(spell.resourceCost, self.charsheet)))
+        self:deltaResourceAmount(spell.resource, -self:resolveRaw(spell.resource, Global.resolveNumFn(spell.resourceCost, self.charsheet)))
     end
-    local castDuration = self.actionEnd - utctime()
+    local castDuration = self.actionEnd - Global.utctime()
     castDuration = castDuration / (1 + self.charsheet:haste(self))
     for order, effect in ipairs(spell.effects) do
         if effect(spell, self, spellTarget, spellLocation) then
@@ -349,25 +358,25 @@ end
 ResourceUnit.instantCast = function(self, spell, spellTarget, spellLocation) --For instant casts
     local isMidCastCast = false
     if self.currentAction == Actions.Cast then
-        if not spell.castableWhileCasting(self) then
+        if not spell.castableWhileCasting or not spell.castableWhileCasting(self) then
             self.interruptCast()
         else
             isMidCastCast = true
         end
     end
 
-    local thisSpellGcdEnd = utctime() + self.charsheet:gcd(self, spell.gcd or GCD.None)
+    local thisSpellGcdEnd = Global.utctime() + self.charsheet:gcd(self, spell.gcd or GCD.None)
 
     if not isMidCastCast then --If this is a mid-cast cast, preserve the old information
         self.currentAction = (self.mainSwinging or self.offSwinging) and Actions.Swing or Actions.Idle --We immediately go to idle because the cast is instant
-        self.actionBegin = utctime()
-        self.actionEnd = utctime() --Duh
-        self.lastSpell = ref(spell)
+        self.actionBegin = Global.utctime()
+        self.actionEnd = Global.utctime() --Duh
+        self.lastSpell = Global.ref(spell)
     end
     self.gcdEnd = math.max(self.gcdEnd, thisSpellGcdEnd) --If the old GCD would have ended later, preserve it
 
     if spell.resourceCost then
-        self:deltaResourceAmount(spell.resource, -self:resolveRaw(spell.resource, resolveNumFn(spell.resourceCost, self.charsheet)))
+        self:deltaResourceAmount(spell.resource, -self:resolveRaw(spell.resource, Global.resolveNumFn(spell.resourceCost, self.charsheet)))
     end
     for order, effect in ipairs(spell.effects) do
         if effect(spell, self, spellTarget, spellLocation) then
@@ -382,7 +391,7 @@ ResourceUnit.passiveCast = function(self, spell, spellTarget, spellLocation) --F
     --We dont set any timers or the last spell here
 
     if spell.resourceCost then
-        self:deltaResourceAmount(spell.resource, -self:resolveRaw(spell.resource, resolveNumFn(spell.resourceCost, self.charsheet)))
+        self:deltaResourceAmount(spell.resource, -self:resolveRaw(spell.resource, Global.resolveNumFn(spell.resourceCost, self.charsheet)))
     end
 
     for order, effect in ipairs(spell.effects) do
@@ -394,7 +403,7 @@ ResourceUnit.passiveCast = function(self, spell, spellTarget, spellLocation) --F
     return true
 end
 
-ResourceUnit.die = void
+ResourceUnit.die = Global.void
 
 ResourceUnit.canCast = function(self, spell, target, location)
     --Check if we can cast the spell
@@ -411,7 +420,7 @@ ResourceUnit.canCast = function(self, spell, target, location)
     --1
     if spell.resourceCost then
         local resourceAmount = self:getResourceAmount(spell.resource)
-        local resourceCost = self:resolveRaw(spell.resource, resolveNumFn(spell.resourceCost, self.charsheet))
+        local resourceCost = self:resolveRaw(spell.resource, Global.resolveNumFn(spell.resourceCost, self.charsheet))
         if resourceAmount < resourceCost then
             return false, "Not enough " .. ResourceNames[spell.resource]
         end
@@ -426,7 +435,7 @@ ResourceUnit.canCast = function(self, spell, target, location)
     end
 
     --3
-    local defaultLosRule = (LosRules)[spell.targetType or TargetType.Self]
+    local defaultLosRule = Const.LosRules[spell.targetType or Const.TargetType.Self]
     local shouldCheckLos = (spell.losRequired == nil) and defaultLosRule or spell.losRequired
     if target and shouldCheckLos then
         if not self:los(target) then
@@ -435,7 +444,7 @@ ResourceUnit.canCast = function(self, spell, target, location)
     end
 
     --4
-    local defaultFacingRule = (FacingRules)[spell.targetType or TargetType.Self]
+    local defaultFacingRule = Const.FacingRules[spell.targetType or Const.TargetType.Self]
     local shouldCheckFacing = (spell.facingRequired == nil) and defaultFacingRule or spell.facingRequired
     if target and shouldCheckFacing then
         local facing = self:facing(target)
@@ -445,7 +454,7 @@ ResourceUnit.canCast = function(self, spell, target, location)
     end
 
     --5
-    if self.gcdEnd and utctime() < self.gcdEnd then
+    if self.gcdEnd and Global.utctime() < self.gcdEnd then
         return false, "Not ready yet"
     end
 
@@ -464,7 +473,7 @@ ResourceUnit.canCast = function(self, spell, target, location)
     end
 
     --7
-    local ready, whyNot = self.charsheet.spellbook:ready(spell)
+    local ready, whyNot = self.spellbook:ready(spell)
     if not ready then
         return false, whyNot or "Spell is not ready"
     end
@@ -478,7 +487,7 @@ ResourceUnit.canCast = function(self, spell, target, location)
 end
 
 ResourceUnit.targetUnit = function(self, otherUnit)
-    self.target = ref(otherUnit)
+    self.target = Global.ref(otherUnit)
 end
 
 ResourceUnit.startAttack = function(self, spellTarget)
@@ -532,35 +541,35 @@ ResourceUnit.cast = function(self, spell, target, location)
 
     if not casttype then
         warn("No cast type for spell " .. spell.name .. " assuming Instant")
-        casttype = CastType.Instant
+        casttype = Const.CastType.Instant
     end
 
-    if spell.targetType == TargetType.Self then
+    if spell.targetType == Const.TargetType.Self then
         target = self
-    elseif spell.targetType == TargetType.Friendly then
+    elseif spell.targetType == Const.TargetType.Friendly then
         print(self:isFriendly(target), "<- friendly. DEBUG: FALLING BACK TO SELF")
         target = self
-    elseif spell.targetType == TargetType.Enemy then
+    elseif spell.targetType == Const.TargetType.Enemy then
         assert(self:isEnemy(target), "Target is not enemy")
-    elseif spell.targetType == TargetType.Area then
+    elseif spell.targetType == Const.TargetType.Area then
         assert(location, "No location for area spell")
-    elseif spell.targetType == TargetType.Party then
+    elseif spell.targetType == Const.TargetType.Party then
         assert(self:isFriendly(target), "Target is not friendly")
         --TODO: check party
-    elseif spell.targetType == TargetType.Any then
+    elseif spell.targetType == Const.TargetType.Any then
         assert(target, "No target for Any spell")
     else
         error("Unknown target type " .. tostring(spell.targetType))
     end
 
     ({
-        [CastType.Instant] = ResourceUnit.instantCast,
-        [CastType.Channeled] = ResourceUnit.channelCast,
-        [CastType.Casting]    = ResourceUnit.hardCast,
-        [CastType.Passive] = ResourceUnit.passiveCast,
-    })[resolveNumFn(casttype, self.charsheet)](self, spell, target, location)
+        [Const.CastType.Instant] = ResourceUnit.instantCast,
+        [Const.CastType.Channeled] = ResourceUnit.channelCast,
+        [Const.CastType.Casting]    = ResourceUnit.hardCast,
+        [Const.CastType.Passive] = ResourceUnit.passiveCast,
+    })[Global.resolveNumFn(casttype, self.charsheet)](self, spell, target, location)
 
-    self.charsheet.spellbook:postCast(spell, self)
+    self.spellbook:postCast(spell, self)
 
     return true
 end
@@ -607,7 +616,7 @@ ResourceUnit.aggroedUnits = function(self)
 end
 
 ResourceUnit.isInCombat = function(self)
-    return self:aggroedUnits() > 0 or (utctime() - self.lastAggressiveAction) < ResourceUnit.DropCombatFromOwnActionTimeout
+    return self:aggroedUnits() > 0 or (Global.utctime() - self.lastAggressiveAction) < ResourceUnit.DropCombatFromOwnActionTimeout
 end
 
 ResourceUnit.tick = function(self, deltaTime)
@@ -617,7 +626,7 @@ ResourceUnit.tick = function(self, deltaTime)
         if self.mainSwinging then
             local facing = self:facing(self.target)
             local los = self:los(self.target)
-            local inrange = self.target:distanceFrom(self.location) <= Range.Combat
+            local inrange = self.target:distanceFrom(self.location) <= Const.Range.Combat
             if facing and los and inrange then --Remember swing timer when not facing for QoL
                 self.mainSwingPassed = self.mainSwingPassed + deltaTime
                 local timeout = self.charsheet.equipment:get(Slots.MainHand):swingTimeout()
@@ -625,7 +634,7 @@ ResourceUnit.tick = function(self, deltaTime)
                     Effects.StartMeleeSwing(nil, timeout)
                     self.mainSwingPassed = self.mainSwingPassed - timeout
                     local dam = self.charsheet:totalMainHandDamage()
-                    use"Spell".SchoolDamage(Spells.StartAttack, self, self.target, dam, Schools.Physical)
+                    Global.use"Spell".SchoolDamage(Spells.StartAttack, self, self.target, dam, Const.Schools.Physical)
                 end
             else
                 Effects.StopMeleeSwing()
@@ -634,20 +643,20 @@ ResourceUnit.tick = function(self, deltaTime)
         if self.offSwinging then
             local facing = self:facing(self.target)
             local los = self:los(self.target)
-            local inrange = self.target:distanceFrom(self.location) <= Range.Combat
+            local inrange = self.target:distanceFrom(self.location) <= Const.Range.Combat
             if facing and los and inrange then
                 self.offSwingPassed = self.offSwingPassed + deltaTime
                 local timeout = self.charsheet.equipment:get(Slots.OffHand):swingTimeout()
                 if self.offSwingPassed >= timeout then
                     self.offSwingPassed = self.offSwingPassed - timeout
                     local dam = self.charsheet:totalOffHandDamage()
-                    use"Spell".SchoolDamage(Spells.StartAttack, self, self.target, dam, Schools.Physical)
+                    Global.use"Spell".SchoolDamage(Spells.StartAttack, self, self.target, dam, Const.Schools.Physical)
                 end
             end
         end
     end
 
-    self.charsheet.spellbook:tick(deltaTime)
+    self.spellbook:tick(deltaTime)
     ResourceUnit.super.tick(self, deltaTime)
 end
 
@@ -658,8 +667,8 @@ ResourceUnit.regenTick = function(self, timeSinceLastTick, inCombat)
     self:deltaResourceAmount(Resources.Focus, self.charsheet:focusRegen() * timeSinceLastTick * self:getResourceMaximum(Resources.Focus))
     if not inCombat then
         if self:getPool("SoulFragments") and self:getResourceAmount("SoulFragments") ~= ResourceUnit.SoulFragmentsRegenerateTo then
-            if (utctime() - self.soulFragmentRegenTick) > ResourceUnit.SoulFragmentsRegenTimeout then
-                self.soulFragmentRegenTick = utctime()
+            if (Global.utctime() - self.soulFragmentRegenTick) > ResourceUnit.SoulFragmentsRegenTimeout then
+                self.soulFragmentRegenTick = Global.utctime()
                 local direction = self:getResourceAmount("SoulFragments") > ResourceUnit.SoulFragmentsRegenerateTo and -1 or 1
                 self:deltaResourceAmount("SoulFragments", direction)
             end

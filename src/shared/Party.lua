@@ -1,10 +1,11 @@
-setfenv(1, require(script.Parent.Global))
+local Global = require(script.Parent.Global)
+local Const = require(script.Parent.Const)
 
-local Party = use"Object".inherit"Party"
+local Party = Global.use"Object".inherit"Party"
 
---A spellbook is a collection of spells.
+--A party is a group of players.
 
-Party.new = Constructor(Party, {
+Party.new = Global.Constructor(Party, {
     --Array
     members = {}, --First is always leader
 
@@ -31,7 +32,7 @@ Party.disband = function(self)
     for _, member in ipairs(self.members.noproxy) do
         self:playerTryLeave(member)
     end
-    gc(self)
+    Global.gc(self)
 end
 
 Party.playerTryLeave = function(self, player)
@@ -46,10 +47,10 @@ end
 
 
 Party.playerTryJoin = function(self, player)
-    if #self.members.noproxy >= PartySize.Party and not self.isRaid then
+    if #self.members.noproxy >= Const.PartySize.Party and not self.isRaid then
         return false
     end
-    replicatedInsert(self.members, player)
+    Global.replicatedInsert(self.members, player)
     return true
 end
 

@@ -1,10 +1,10 @@
-setfenv(1, require(script.Parent.Global))
+local Global = require(script.Parent.Global)
 
-local TargetUnit = use"WorldUnit".inherit"TargetUnit"
+local TargetUnit = Global.use"WorldUnit".inherit"TargetUnit"
 
 --Unit class that can target and be targeted and have auras.
 
-TargetUnit.new = Constructor(TargetUnit, {
+TargetUnit.new = Global.Constructor(TargetUnit, {
     width = 0, --width of the unit (hitbox)
 
     display = "",
@@ -13,17 +13,15 @@ TargetUnit.new = Constructor(TargetUnit, {
     auras = {}, --Auras this unit is affected by
     castAuras = {}, --Auras this unit has cast on others/itself
 
-    charsheet = nil,
-}, function(self, charsheet)
-    self.charsheet = charsheet
-    self.charsheet.spellbook:updateRaceSpells(self.charsheet)
-    self.charsheet.spellbook:updateClassSpells(self.charsheet)
-    self.charsheet.spellbook:updateSpecSpells(self.charsheet)
-    self.charsheet.spellbook:onCreateUnit(self)
+    charsheet = Global.use"Charsheet".new,
+    spellbook = nil,
+}, function(self)
+    self.spellbook = Global.use"Spellbook".new(nil, self.charsheet)
+    self.spellbook:onCreateUnit(self)
 end)
 
 TargetUnit.hasAura = function(self, auradef, byCauser)
-    assertObj(auradef)
+    Global.assertObj(auradef)
     auradef:assertIs("Aura")
     assert(byCauser == nil or (byCauser.is and byCauser:is("Unit")), "byCauser must be a unit or nil")
 
@@ -31,7 +29,7 @@ TargetUnit.hasAura = function(self, auradef, byCauser)
 end
 
 TargetUnit.findFirstAura = function(self, auradef, byCauser)
-    assertObj(auradef)
+    Global.assertObj(auradef)
     auradef:assertIs("Aura")
     assert(byCauser == nil or (byCauser.is and byCauser:is("Unit")), "byCauser must be a unit or nil")
 
@@ -65,7 +63,7 @@ TargetUnit.tick = function(self, deltaTime)
             for _, event in ipairs(aura.eventConnections) do
                 event:Disconnect()
             end
-            use"Spell".RemoveAuraInstance(self, aura)
+            Global.use"Spell".RemoveAuraInstance(self, aura)
         else
             aura:tick(deltaTime, self)
         end

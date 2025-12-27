@@ -1,11 +1,13 @@
-setfenv(1, require(script.Parent.Global))
+local Global = require(script.Parent.Global)
+local Const = require(script.Parent.Const)
+local Slots = Const.Slots
+local Items = Const.Items
 
-local Equipment = use"Object".inherit"Equipment"
+local Equipment = Global.use"Object".inherit"Equipment"
 
 --Equipment state
 
-local itemStringConstructor = use"Item".newOf
-Equipment.new = Constructor(Equipment, {
+Equipment.new = Global.Constructor(Equipment, {
     slots = {
         --nil means empty slot
         [Slots.Head] = nil,
@@ -69,7 +71,7 @@ end
     @return The item that was previously in the slot. If the slot was empty, nil.
 ]]
 Equipment.swap = function(self, slot, newItem)
-    assertObj(newItem)
+    Global.assertObj(newItem)
     newItem:assertIs("Item")
 
     if newItem.item.equipSlot ~= slot then

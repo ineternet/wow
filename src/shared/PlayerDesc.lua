@@ -1,17 +1,17 @@
-setfenv(1, require(script.Parent.Global))
+local Global = require(script.Parent.Global)
 
-local PlayerDesc = use"Object".inherit"PlayerDesc"
+local PlayerDesc = Global.use"Object".inherit"PlayerDesc"
 
 --Contains active data about a player.
 
-PlayerDesc.new = Constructor(PlayerDesc, {
+PlayerDesc.new = Global.Constructor(PlayerDesc, {
     player = nil, --Player instance
 
     party = nil, -- Ref to party object
 
     xp = 0, --TOTAL accumulated XP
 
-    talents = use"TalentTree".new,
+    talents = Global.use"TalentTree".new,
 }, function(self, player, dbEntry)
     self.player = player
     self.talents:Deserialize(dbEntry.talents)
